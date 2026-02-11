@@ -1,0 +1,67 @@
+import { BadgeTier } from "@/types/rating";
+import { cn } from "@/lib/utils";
+import { Award, ShieldCheck, Gem } from "lucide-react";
+
+interface ReputationBadgeProps {
+    tier: BadgeTier;
+    className?: string;
+    showLabel?: boolean;
+}
+
+export function ReputationBadge({ tier, className, showLabel = true }: ReputationBadgeProps) {
+
+    const getTierConfig = (tier: BadgeTier) => {
+        switch (tier) {
+            case BadgeTier.PLATINUM:
+                return {
+                    bg: "bg-slate-900",
+                    text: "text-slate-50",
+                    border: "border-slate-700",
+                    icon: <Gem className="w-3.5 h-3.5 text-cyan-200" />,
+                    gradient: "bg-gradient-to-r from-slate-900 to-slate-800"
+                };
+            case BadgeTier.GOLD:
+                return {
+                    bg: "bg-amber-50",
+                    text: "text-amber-700",
+                    border: "border-amber-200",
+                    icon: <Award className="w-3.5 h-3.5 text-amber-500" />,
+                    gradient: "bg-gradient-to-r from-amber-50 to-amber-100"
+                };
+            case BadgeTier.SILVER:
+                return {
+                    bg: "bg-gray-100",
+                    text: "text-gray-700",
+                    border: "border-gray-200",
+                    icon: <ShieldCheck className="w-3.5 h-3.5 text-gray-500" />,
+                    gradient: "bg-gradient-to-r from-gray-50 to-gray-100"
+                };
+            default: // BRONZE
+                return {
+                    bg: "bg-orange-50",
+                    text: "text-orange-800",
+                    border: "border-orange-200",
+                    icon: <Award className="w-3.5 h-3.5 text-orange-600" />,
+                    gradient: "bg-gradient-to-r from-orange-50 to-orange-100"
+                };
+        }
+    };
+
+    const config = getTierConfig(tier);
+
+    return (
+        <div
+            className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border shadow-sm transition-all hover:shadow-md cursor-help",
+                config.bg,
+                config.text,
+                config.border,
+                className
+            )}
+            title={`${tier} Reputation Tier`}
+        >
+            {config.icon}
+            {showLabel && <span className="text-xs font-semibold tracking-wide uppercase">{tier}</span>}
+        </div>
+    );
+}
