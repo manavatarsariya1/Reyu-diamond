@@ -1,46 +1,165 @@
-import mongoose, { Document, Model } from "mongoose";
+import mongoose, { Schema, Model, Types, Document } from "mongoose";
 
-export type KYCStatus = "pending" | "approved" | "rejected";
+export type KycStatus = "pending" | "approved" | "rejected";
 
-export interface IKyc extends Document {
-  userId: mongoose.Types.ObjectId;
-  aadhaarNumber: string;
-  panNumber: string;
-  aadhaarImageUrl: string;
-  panImageUrl: string;
-  status: KYCStatus;
-  rejectionReason?: string;
+interface IKycDocuments {
+  aadhaar: {
+    aadhaarHash: string;
+    aadhaarLast4: string;
+    url: string;
+    publicId: string;
+  };
+  pan: {
+    panHash: string;
+    panLast4: string;
+    url: string;
+    publicId: string;
+  };
 }
 
-const kycSchema = new mongoose.Schema<IKyc>(
+export interface IKyc extends Document {
+  userId: Types.ObjectId;
+
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+
+  dob: Date;
+  phone: string;
+
+  address: {
+    residentialAddress: string;
+    city: string;
+    state: string;
+    pincode: string;
+    country: string;
+  };
+
+  documents: IKycDocuments;
+
+  status: KycStatus;
+  rejectionReason?: string;
+  verifiedBy?: Types.ObjectId;
+  verifiedAt?: Date;
+}
+
+const KycSchema = new Schema<IKyc>(
   {
     userId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
       unique: true,
+      index: true,
     },
 
-    aadhaarNumber: {
+    firstName: {
       type: String,
       required: true,
       trim: true,
+      maxlength: 50,
     },
 
-    panNumber: {
+    middleName: {
       type: String,
-      required: true,
-      uppercase: true,
       trim: true,
+      maxlength: 50,
     },
 
-    aadhaarImageUrl: {
+    lastName: {
       type: String,
+      required: true,
+      trim: true,
+      maxlength: 50,
+    },
+
+    dob: {
+      type: Date,
       required: true,
     },
 
-    panImageUrl: {
+    phone: {
       type: String,
+      required: true,
+      trim: true,
+      validate: {
+        validator: (v: string) => /^[6-9]\d{9}$/.test(v),
+        message: "Invalid phone number",
+      },
+    },
+
+    address: {
+      type: new Schema(
+        {
+          residentialAddress: {
+            type: String,
+            required: true,
+            trim: true,
+          },
+          city: {
+            type: String,
+            required: true,
+            trim: true,
+          },
+          state: {
+            type: String,
+            required: true,
+            trim: true,
+          },
+          pincode: {
+            type: String,
+            required: true,
+            trim: true,
+            validate: {
+              validator: (v: string) => /^\d{6}$/.test(v),
+              message: "Invalid pincode",
+            },
+          },
+          country: {
+            type: String,
+            default: "IN",
+            trim: true,
+          },
+        },
+        { _id: false }
+      ),
+      required: true,
+    },
+
+    documents: {
+      type: new Schema(
+        {
+          aadhaar: {
+            aadhaarHash: {
+              type: String,
+              required: true,
+              select: false,
+            },
+            aadhaarNumber: {
+              type: String,
+              required: true,
+            },
+            url: { type: String, required: true },
+            publicId: { type: String },
+          },
+
+          pan: {
+            panHash: {
+              type: String,
+              required: true,
+              select: false,
+            },
+            panNumber: {
+              type: String,
+              required: true,
+              uppercase: true,
+            },
+            url: { type: String, required: true },
+            publicId: { type: String, required: true },
+          },
+        },
+        { _id: false }
+      ),
       required: true,
     },
 
@@ -48,15 +167,29 @@ const kycSchema = new mongoose.Schema<IKyc>(
       type: String,
       enum: ["pending", "approved", "rejected"],
       default: "pending",
+      index: true,
     },
 
     rejectionReason: {
       type: String,
-      default: null,
+      trim: true,
+      required: function (this: IKyc) {
+        return this.status === "rejected";
+      },
     },
-  },{ timestamps: true,}
+
+    verifiedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    verifiedAt: {
+      type: Date,
+    },
+  },
+  { timestamps: true }
 );
 
-const Kyc: Model<IKyc> = mongoose.model<IKyc>("Kyc", kycSchema);
+const KYC: Model<IKyc> = mongoose.model<IKyc>("KYC", KycSchema);
 
-export default Kyc;
+export default KYC;

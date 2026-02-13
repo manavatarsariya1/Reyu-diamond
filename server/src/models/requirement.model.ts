@@ -61,10 +61,7 @@ const requirementSchema = new mongoose.Schema<IRequirement>(
   { timestamps: true }
 );
 
-requirementSchema.index(
-  { userId: 1 },
-  { unique: true }
-);
+requirementSchema.index({ userId: 1 });
 
 const Requirement: Model<IRequirement> =
   mongoose.model<IRequirement>("Requirement", requirementSchema);
