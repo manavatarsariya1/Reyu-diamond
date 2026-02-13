@@ -3,6 +3,8 @@ import Deal, { type DealStatus } from "../models/Deal.model.js";
 import Bid from "../models/Bid.model.js";
 import Inventory from "../models/Inventory.model.js";
 import { Auction } from "../models/Auction.model.js";
+import Escrow from "../models/Escrow.model.js";
+import { refundEscrowService, releaseEscrowService } from "./escrow.service.js";
 
 export const createDealService = async (bidId: string, userId: string) => {
   if (!mongoose.Types.ObjectId.isValid(bidId)) {
@@ -205,3 +207,223 @@ export const dealDownloadService = async (
   ).populate(dealListPopulate);
   return updated ?? deal;
 }
+
+export const cancelDealService = async (
+  dealId: string,
+  userId: string,
+  role: string
+) => {
+  const session = await mongoose.startSession();
+  if (process.env.NODE_ENV !== "development") {
+    session.startTransaction();
+  }
+
+  try {
+    const deal = await Deal.findById(dealId).session(session);
+    if (!deal) throw new Error("Deal not found");
+
+    const isBuyer = deal.buyerId.toString() === userId;
+    const isSeller = deal.sellerId.toString() === userId;
+    const isAdmin = role === "admin";
+
+    if (!isBuyer && !isSeller && !isAdmin) {
+      throw new Error("Only buyer/seller/admin can cancel deal");
+    }
+
+    // if already completed, cannot cancel
+    if (deal.status === "COMPLETED") {
+      throw new Error("Completed deal cannot be cancelled");
+    }
+
+    // find escrow
+    const escrow = await Escrow.findOne({ deal: dealId }).session(session);
+
+    // if payment already held => refund must happen
+    if (escrow && escrow.status === "HELD") {
+      if (process.env.NODE_ENV !== "development") {
+        await session.commitTransaction();
+      }
+      session.endSession();
+
+      // refund service uses its own transaction
+      return await refundEscrowService(dealId, userId);
+    }
+
+    // if payment was initiated but not held
+    if (escrow && escrow.status === "PENDING") {
+      escrow.status = "CANCELLED";
+      await escrow.save({ session });
+    }
+
+    // cancel deal directly
+    const updatedDeal = await Deal.findByIdAndUpdate(
+      dealId,
+      {
+        $set: { status: "CANCELLED" },
+        $push: {
+          history: {
+            status: "CANCELLED",
+            changedBy: userId as any,
+            changedAt: new Date(),
+          },
+        },
+      },
+      { new: true, session, runValidators: false }
+    );
+
+    if (!updatedDeal) {
+      throw new Error("Failed to cancel deal: Update returned null");
+    }
+
+    if (process.env.NODE_ENV !== "development") {
+      await session.commitTransaction();
+    }
+    session.endSession();
+
+    return {
+      deal: updatedDeal,
+      escrow,
+    };
+  } catch (error) {
+    if (process.env.NODE_ENV !== "development") {
+      await session.abortTransaction();
+    }
+    session.endSession();
+    throw error;
+  }
+};
+
+export const raiseDisputeService = async (
+  dealId: string,
+  reason: string,
+  userId: string,
+  role: string
+) => {
+  const session = await mongoose.startSession();
+  if (process.env.NODE_ENV !== "development") {
+    session.startTransaction();
+  }
+
+  try {
+    const deal = await Deal.findById(dealId).session(session);
+    if (!deal) throw new Error("Deal not found");
+
+    const escrow = await Escrow.findOne({ deal: dealId }).session(session);
+    if (!escrow) throw new Error("Escrow not found");
+
+    const isBuyer = deal.buyerId.toString() === userId;
+    const isSeller = deal.sellerId.toString() === userId;
+    const isAdmin = role === "admin";
+
+    if (!isBuyer && !isSeller && !isAdmin) {
+      throw new Error("Only buyer/seller/admin can raise dispute");
+    }
+
+    // dispute can happen only when money is in escrow
+    if (escrow.status !== "HELD") {
+      throw new Error("Dispute can only be raised when escrow is HELD");
+    }
+
+    if (deal.status === "DISPUTED") {
+      throw new Error("Deal already disputed");
+    }
+
+    const updatedDeal = await Deal.findByIdAndUpdate(
+      dealId,
+      {
+        $set: {
+          status: "DISPUTED",
+          dispute: {
+            reason,
+            raisedBy: userId as any,
+            raisedAt: new Date(),
+          },
+        },
+        $push: {
+          history: {
+            status: "DISPUTED",
+            changedBy: userId as any,
+            changedAt: new Date(),
+          },
+        },
+      },
+      { new: true, session, runValidators: false }
+    );
+
+    if (!updatedDeal) {
+      throw new Error("Failed to dispute deal: Update returned null");
+    }
+
+    if (process.env.NODE_ENV !== "development") {
+      await session.commitTransaction();
+    }
+    session.endSession();
+
+    return updatedDeal;
+  } catch (error) {
+    if (process.env.NODE_ENV !== "development") {
+      await session.abortTransaction();
+    }
+    session.endSession();
+    throw error;
+  }
+};
+
+export const resolveDisputeService = async (
+  dealId: string,
+  resolution: "REFUND_BUYER" | "RELEASE_SELLER",
+  adminNote: string,
+  userId: string,
+  role: string
+) => {
+  if (role !== "admin") {
+    throw new Error("Only admin can resolve disputes");
+  }
+
+  if (!["REFUND_BUYER", "RELEASE_SELLER"].includes(resolution)) {
+    throw new Error("Invalid resolution type");
+  }
+
+  const deal = await Deal.findById(dealId);
+  if (!deal) throw new Error("Deal not found");
+
+  const escrow = await Escrow.findOne({ deal: dealId });
+  if (!escrow) throw new Error("Escrow not found");
+
+  if (deal.status !== "DISPUTED") {
+    throw new Error("Deal is not in disputed state");
+  }
+
+  if (escrow.status !== "HELD") {
+    throw new Error("Escrow must be HELD to resolve dispute");
+  }
+
+  // update dispute resolution fields
+  const updatedDeal = await Deal.findByIdAndUpdate(
+    dealId,
+    {
+      $set: {
+        "dispute.resolvedBy": userId as any,
+        "dispute.resolvedAt": new Date(),
+        "dispute.resolution": resolution,
+        "dispute.adminNote": adminNote,
+      },
+    },
+    { new: true, runValidators: false }
+  );
+
+  if (!updatedDeal) {
+    throw new Error("Failed to resolve dispute: Update returned null");
+  }
+
+  // now execute action based on resolution
+  if (resolution === "REFUND_BUYER") {
+    return await refundEscrowService(dealId, userId);
+  }
+
+  if (resolution === "RELEASE_SELLER") {
+    return await releaseEscrowService(dealId, userId);
+  }
+
+  throw new Error("Invalid resolution type");
+};

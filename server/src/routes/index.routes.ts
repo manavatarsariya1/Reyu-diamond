@@ -8,6 +8,8 @@ import inventoryRoutes from "./inventory.routes.js";
 import bidRoutes from "./bid.routes.js";
 import dealRoutes from "./deal.routes.js";
 import auctionRoutes from "./auction.routes.js";
+import stripeRoutes from "./stripe.routes.js";
+import chatRoutes from "./chat.routes.js";
 
 const router = Router();
 
@@ -20,5 +22,7 @@ router.use("/inventory", inventoryRoutes);
 router.use("/auction", auctionRoutes);
 router.use("/bid", bidRoutes);
 router.use("/deal", dealRoutes);
+router.use("/stripe", stripeRoutes);
+router.use("/chat", chatRoutes);
 
 export default router;

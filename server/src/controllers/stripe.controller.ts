@@ -1,0 +1,259 @@
+import type { Request, Response } from "express";
+import { stripeService } from "../services/stripe.service.js";
+import User from "../models/User.model.js";
+import Deal from "../models/Deal.model.js";
+import Escrow from "../models/Escrow.model.js";
+import sendResponse from "../utils/api.response.js";
+import stripe from "../utils/stripe.utility.js";
+
+export const onboardUser = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.id;
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return sendResponse({ res, statusCode: 404, success: false, message: "User not found" });
+        }
+
+        let accountId = user.stripeAccountId;
+        console.log("ACCOUNT ID:", accountId);
+
+        if (!accountId) {
+            console.log("Creating new Stripe account");
+            accountId = await stripeService.createStripeAccount(user);
+            user.stripeAccountId = accountId;
+            await user.save();
+        }
+
+        let accountLink;
+        try {
+            accountLink = await stripeService.createOnboardingLink(accountId!, req);
+        } catch (error: any) {
+            if (error.message === 'ACCOUNT_INVALID') {
+                console.warn(`Stripe account ${accountId} invalid, creating new one`);
+                user.stripeAccountId = undefined;
+                await user.save(); // Clear invalid ID
+
+                accountId = await stripeService.createStripeAccount(user); // Create new
+
+                // createStripeAccount updates user object but let's be safe
+                user.stripeAccountId = accountId;
+                await user.save();
+
+                accountLink = await stripeService.createOnboardingLink(accountId, req);
+            } else {
+                throw error;
+            }
+        }
+
+        return sendResponse({ res, statusCode: 200, success: true, message: "Onboarding link generated", data: { url: accountLink } });
+    } catch (error: any) {
+        console.error("Onboarding error:", error);
+        return sendResponse({ res, statusCode: 500, success: false, message: error.message });
+    }
+};
+
+export const initiatePayment = async (req: Request, res: Response) => {
+    try {
+        const { dealId } = req.body;
+        const userId = (req as any).user._id || (req as any).user.id;
+
+        if (!dealId) {
+            return sendResponse({ res, statusCode: 400, success: false, message: "Deal ID is required" });
+        }
+
+        const deal = await Deal.findById(dealId);
+        if (!deal) {
+            return sendResponse({ res, statusCode: 404, success: false, message: "Deal not found" });
+        }
+
+        // Verify the user is the buyer
+        if (deal.buyerId.toString() !== userId.toString()) {
+            return sendResponse({ res, statusCode: 403, success: false, message: "Only the buyer can initiate payment for this deal" });
+        }
+
+        const { clientSecret, paymentIntentId } = await stripeService.createPaymentIntent(deal);
+
+        return sendResponse({ res, statusCode: 200, success: true, message: "Payment initiated", data: { clientSecret, paymentIntentId } });
+
+    } catch (error: any) {
+        console.error("Payment initiation error:", error);
+        return sendResponse({ res, statusCode: 500, success: false, message: error.message });
+    }
+};
+
+export const stripeWebhookHandler = async (req: Request, res: Response) => {
+    const sig = req.headers["stripe-signature"] as string;
+
+    let event;
+
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!endpointSecret) {
+        console.error("❌ STRIPE_WEBHOOK_SECRET is not defined");
+        return res.sendStatus(500);
+    }
+
+    try {
+        event = stripe.webhooks.constructEvent(
+            req.body,
+            sig,
+            endpointSecret
+        );
+    } catch (err: any) {
+        console.log("❌ Webhook signature failed");
+        return res.sendStatus(400);
+    }
+
+    console.log("📩 Stripe Event:", event.type);
+
+    try {
+        /**
+         * PAYMENT SUCCESS (Money Authorized / Captured depending on your flow)
+         */
+        if (event.type === "payment_intent.succeeded") {
+            const paymentIntent: any = event.data.object;
+
+            const escrow = await Escrow.findOne({
+                paymentIntentId: paymentIntent.id,
+            });
+
+            if (!escrow) {
+                console.log("⚠️ Escrow not found for:", paymentIntent.id);
+                return res.json({ received: true });
+            }
+
+            // Update escrow
+            escrow.status = "HELD";
+            escrow.paymentIntentId = paymentIntent.id;
+            await escrow.save();
+
+            // Update deal
+            await Deal.findByIdAndUpdate(escrow.deal, {
+                status: "IN_ESCROW",
+            });
+
+            console.log("✅ Escrow funded, deal moved to IN_ESCROW");
+        }
+
+        /**
+         * PAYMENT FAILED
+         */
+        if (event.type === "payment_intent.payment_failed") {
+            const paymentIntent: any = event.data.object;
+
+            const escrow = await Escrow.findOne({
+                paymentIntentId: paymentIntent.id,
+            });
+
+            if (escrow) {
+                escrow.status = "FAILED";
+                await escrow.save();
+            }
+
+            console.log("❌ Payment failed:", paymentIntent.id);
+        }
+
+        /**
+         * PAYMENT CANCELED
+         */
+        if (event.type === "payment_intent.canceled") {
+            const paymentIntent: any = event.data.object;
+
+            const escrow = await Escrow.findOne({
+                paymentIntentId: paymentIntent.id,
+            });
+
+            if (escrow) {
+                escrow.status = "CANCELLED";
+                await escrow.save();
+            }
+
+            console.log("⚠️ Payment cancelled:", paymentIntent.id);
+        }
+
+        return res.json({ received: true });
+
+    } catch (err: any) {
+        console.log("Webhook handler error:", err);
+        return res.sendStatus(500);
+    }
+};
+
+export const releaseEscrow = async (req: Request, res: Response) => {
+    try {
+        const { dealId } = req.body;
+        const userId = (req as any).user._id || (req as any).user.id;
+
+        if (!dealId) {
+            return sendResponse({ res, statusCode: 400, success: false, message: "Deal ID is required" });
+        }
+
+        const deal = await Deal.findById(dealId);
+        if (!deal) {
+            return sendResponse({ res, statusCode: 404, success: false, message: "Deal not found" });
+        }
+
+        // Only buyer can release
+        if (deal.buyerId.toString() !== userId.toString()) {
+            return sendResponse({ res, statusCode: 403, success: false, message: "Only buyer can release payment" });
+        }
+
+        const result = await stripeService.releaseEscrow(dealId);
+
+        return sendResponse({ res, statusCode: 200, success: true, message: "Escrow released successfully", data: result });
+    } catch (error: any) {
+        console.error("Release error:", error);
+        return sendResponse({ res, statusCode: 500, success: false, message: error.message });
+    }
+};
+
+export const refundEscrow = async (req: Request, res: Response) => {
+    try {
+        const { dealId } = req.body;
+        const userId = (req as any).user._id || (req as any).user.id;
+
+        if (!dealId) {
+            return sendResponse({ res, statusCode: 400, success: false, message: "Deal ID is required" });
+        }
+
+        const deal = await Deal.findById(dealId);
+        if (!deal) {
+            return sendResponse({ res, statusCode: 404, success: false, message: "Deal not found" });
+        }
+
+        // seller or admin can refund (modify later as needed)
+        if (deal.sellerId.toString() !== userId.toString()) {
+            return sendResponse({ res, statusCode: 403, success: false, message: "Not allowed to refund this deal." });
+        }
+
+        const result = await stripeService.refundEscrow(dealId);
+
+        return sendResponse({ res, statusCode: 200, success: true, message: "Escrow refunded successfully", data: result });
+    } catch (error: any) {
+        console.error("Refund error:", error);
+        return sendResponse({ res, statusCode: 500, success: false, message: error.message });
+    }
+};
+
+export const buyerConfirmDelivery = async (req: Request, res: Response) => {
+    try {
+        const { dealId, notes } = req.body;
+        const userId = (req as any).user._id || (req as any).user.id;
+
+        if (!dealId) {
+            return sendResponse({ res, statusCode: 400, success: false, message: "Deal ID is required" });
+        }
+
+        const result = await stripeService.buyerConfirmDelivery(
+            dealId,
+            userId,
+            notes
+        );
+
+        return sendResponse({ res, statusCode: 200, success: true, message: "Buyer confirmed & escrow released", data: result });
+    } catch (error: any) {
+        console.error("Buyer confirm error:", error);
+        return sendResponse({ res, statusCode: 500, success: false, message: error.message });
+    }
+};

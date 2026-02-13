@@ -1,11 +1,14 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import sendResponse from "../utils/api.response.js";
 import {
   createDealService,
   getDealByIdService,
   getallDealsService,
   updateDealStatusService,
-  dealDownloadService
+  dealDownloadService,
+  cancelDealService,
+  raiseDisputeService,
+  resolveDisputeService
 } from "../services/deal.service.js";
 import { uploadBufferToCloudinary } from "../services/cloudinary.service.js";
 import { htmlToPdfBuffer } from "../services/pdf.service.js";
@@ -48,49 +51,49 @@ export const dealCreation = async (req: Request, res: Response) => {
     const msg = error?.message as string | undefined;
 
     switch (msg) {
-        case "Invalid bid id":
-            return sendResponse({
-            res,
-            statusCode: 400,
-            success: false,
-            message: msg,
-            });
+      case "Invalid bid id":
+        return sendResponse({
+          res,
+          statusCode: 400,
+          success: false,
+          message: msg,
+        });
 
-        case "Deal already exists for this bid":
-            return sendResponse({
-            res,
-            statusCode: 409,
-            success: false,
-            message: msg,
-            });
+      case "Deal already exists for this bid":
+        return sendResponse({
+          res,
+          statusCode: 409,
+          success: false,
+          message: msg,
+        });
 
-        case "Bid not found":
-        case "Inventory not found":
-            return sendResponse({
-            res,
-            statusCode: 404,
-            success: false,
-            message: msg,
-            });
+      case "Bid not found":
+      case "Inventory not found":
+        return sendResponse({
+          res,
+          statusCode: 404,
+          success: false,
+          message: msg,
+        });
 
-        case "You are not authorized to create a deal for this bid":
-            return sendResponse({
-            res,
-            statusCode: 403,
-            success: false,
-            message: msg,
-            });
+      case "You are not authorized to create a deal for this bid":
+        return sendResponse({
+          res,
+          statusCode: 403,
+          success: false,
+          message: msg,
+        });
 
-        default:
-            return sendResponse({
-            res,
-            statusCode: 500,
-            success: false,
-            message: "Failed to create deal",
-            errors: msg ?? "Something went wrong",
-            });
-        }
+      default:
+        return sendResponse({
+          res,
+          statusCode: 500,
+          success: false,
+          message: "Failed to create deal",
+          errors: msg ?? "Something went wrong",
+        });
     }
+  }
 };
 
 export const dealDetailsById = async (req: Request, res: Response) => {
@@ -206,10 +209,10 @@ export const getAllBids = async (req: Request, res: Response) => {
 };
 
 export const updateDealStatus = async (req: Request, res: Response) => {
-  try {    
+  try {
     const dealId = req.params.dealId as string;
     const { status } = req.body;
-    
+
     const userId = (req as any).user?.id as string | undefined;
     const role = (req as any).userRole as "admin" | "user" | undefined;
 
@@ -405,6 +408,148 @@ export const downloadPDF = async (req: Request, res: Response) => {
       success: false,
       message: "Failed to generate deal PDF",
       errors: msg ?? "Something went wrong",
+    });
+  }
+};
+
+export const cancelDeal = async (req: any, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+
+    const user = await User.findById(userId);
+    console.log("User for cancel deal:", user);
+
+    if (!user) {
+      return sendResponse({
+        res,
+        statusCode: 401,
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+    const result = await cancelDealService(
+      req.params.dealId,
+      user.id,
+      user.role
+    );
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: "Deal cancelled successfully",
+      data: result,
+    });
+  } catch (error: any) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: "Failed to cancel deal",
+      errors: error?.message ?? "Something went wrong",
+    });
+  }
+};
+
+export const raiseDispute = async (req: any, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return sendResponse({
+        res,
+        statusCode: 401,
+        success: false,
+        message: "User not found",
+      });
+    }
+    const { reason } = req.body;
+
+    if (!reason) {
+      throw new Error("Dispute reason is required");
+    }
+
+    const deal = await raiseDisputeService(
+      req.params.dealId,
+      reason,
+      user.id,
+      user.role
+    );
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: "Dispute raised successfully",
+      data: deal,
+    });
+  } catch (error: any) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: "Failed to raise dispute",
+      errors: error?.message ?? "Something went wrong",
+    });
+  }
+};
+
+export const resolveDispute = async (req: any, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return sendResponse({
+        res,
+        statusCode: 401,
+        success: false,
+        message: "User not found",
+      });
+    }
+    const { resolution: rawResolution, adminNote } = req.body;
+
+    if (!rawResolution) {
+      throw new Error("Resolution is required");
+    }
+
+    const resolution = typeof rawResolution === "string" ? rawResolution.trim() : rawResolution;
+
+    if (!["REFUND_BUYER", "RELEASE_SELLER"].includes(resolution)) {
+      console.log("Invalid resolution:", resolution); // Why is it invalid?
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: `Invalid resolution type. Received: '${resolution}' (type: ${typeof resolution}). Must be REFUND_BUYER or RELEASE_SELLER`,
+      });
+    }
+
+    const result = await resolveDisputeService(
+      req.params.dealId,
+      resolution,
+      adminNote || "",
+      user.id,
+      user.role
+    );
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: "Dispute resolved successfully",
+      data: result,
+    });
+  } catch (error: any) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: "Failed to resolve dispute",
+      errors: error?.message ?? "Something went wrong",
     });
   }
 };

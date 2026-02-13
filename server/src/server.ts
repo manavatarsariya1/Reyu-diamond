@@ -1,16 +1,30 @@
-import express, { type Application, type Request, type Response } from "express";
+import express from "express";
+import type { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { db } from "./config/firebase-admin.config.js";
 import routes from './routes/index.routes.js';
 import { connectDB } from './config/db.js';
+import { createServer } from "http";
+import { initSocket } from "./socket.js";
+import { stripeWebhookHandler } from "./controllers/stripe.controller.js";
 
 dotenv.config();
 
 // Connect to MongoDB
 connectDB();
 
-const app: Application = express();
+const app = express();
+const httpServer = createServer(app);
+
+app.post(
+  "/webhook",
+  express.raw({ type: "application/json" }),
+  stripeWebhookHandler
+);
+
+// Initialize Socket.io
+initSocket(httpServer);
 
 // Middleware
 app.use(cors());
@@ -32,6 +46,6 @@ app.use('/api', routes);
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
