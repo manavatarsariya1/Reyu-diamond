@@ -5,12 +5,13 @@ import { submitKyc } from "../controllers/kyc.controller.js";
 
 const router = Router();
 
-const kycUploadMiddleware = upload.fields([
-  { name: "aadhaar", maxCount: 1 },
-  { name: "pan", maxCount: 1 },
-]);
+// using any() to debug unexpected field error
+const kycUploadMiddleware = upload.any();
 
-router.post("/submit", authMiddleware, kycUploadMiddleware, submitKyc);
+import { validate } from "../middlewares/validation.middleware.js";
+import { submitKycSchema } from "../validation/kyc.validation.js";
+
+router.post("/submit", authMiddleware, kycUploadMiddleware, validate(submitKycSchema), submitKyc);
 
 export default router;
 

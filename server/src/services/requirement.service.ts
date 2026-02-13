@@ -2,15 +2,14 @@ import mongoose from "mongoose";
 import type { IRequirement } from "../models/requirement.model.js";
 import Requirement from "../models/requirement.model.js";
 
-export const createOrUpdateRequirementService = async (
+export const createRequirementService = async (
   userId: string,
   requirementData: Partial<Pick<IRequirement, "shape" | "carat" | "color" | "clarity" | "lab" | "location" | "budget">>
 ): Promise<IRequirement> => {
-  const doc = await Requirement.findOneAndUpdate(
-    { userId: new mongoose.Types.ObjectId(userId) },
-    { $set: { userId: new mongoose.Types.ObjectId(userId), ...requirementData } },
-    { upsert: true, new: true, runValidators: true }
-  );
+  const doc = await Requirement.create({
+    userId: new mongoose.Types.ObjectId(userId),
+    ...requirementData,
+  });
   return doc;
 };
 
@@ -49,9 +48,9 @@ export const getRequirementByIdService = async (
   return requirement;
 };
 
-export const getMyRequirementService = async (userId: string): Promise<IRequirement | null> => {
-  const requirement = await Requirement.findOne({ userId: new mongoose.Types.ObjectId(userId) }).exec();
-  return requirement;
+export const getMyRequirementsService = async (userId: string): Promise<IRequirement[]> => {
+  const requirements = await Requirement.find({ userId: new mongoose.Types.ObjectId(userId) }).exec();
+  return requirements;
 };
 
 export const deleteRequirementService = async (

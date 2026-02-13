@@ -1,10 +1,10 @@
 import type { Request, Response } from "express";
 import {
-  createOrUpdateRequirementService,
+  createRequirementService,
   getAllRequirementsService,
   updateRequirementByIdService,
   getRequirementByIdService,
-  getMyRequirementService,
+  getMyRequirementsService,
   deleteRequirementService,
 } from "../services/requirement.service.js";
 import sendResponse from "../utils/api.response.js";
@@ -24,16 +24,7 @@ export const createRequirement = async (req: Request, res: Response) => {
 
     const { shape, carat, color, clarity, lab, location, budget } = req.body;
 
-    if (!shape || carat == null || !color || !clarity || !lab || !location || budget == null) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "shape, carat, color, clarity, lab, location and budget are required",
-      });
-    }
-
-    const requirement = await createOrUpdateRequirementService(userId, {
+    const requirement = await createRequirementService(userId, {
       shape,
       carat,
       color,
@@ -43,15 +34,12 @@ export const createRequirement = async (req: Request, res: Response) => {
       budget,
     });
 
-    const isNew = requirement.createdAt && requirement.updatedAt
-      && requirement.createdAt.getTime() === requirement.updatedAt.getTime();
-
     return sendResponse({
       res,
-      statusCode: isNew ? 201 : 200,
+      statusCode: 201,
       success: true,
       data: requirement,
-      message: isNew ? "Requirement created successfully" : "Requirement updated successfully",
+      message: "Requirement created successfully",
     });
   } catch (error) {
     return sendResponse({
@@ -68,19 +56,19 @@ export const getAllRequirements = async (req: Request, res: Response) => {
   try {
     const requirements = await getAllRequirementsService();
     return sendResponse({
-        res,
-        statusCode: 200,
-        success: true,
-        data: requirements,
-        message: "All Requirements fetched successfully",
+      res,
+      statusCode: 200,
+      success: true,
+      data: requirements,
+      message: "All Requirements fetched successfully",
     });
   } catch (error) {
     return sendResponse({
-        res,
-        statusCode: 500,
-        success: false,
-        message: "Failed to fetch requirements",
-        errors: (error as Error).message || "Something went wrong",
+      res,
+      statusCode: 500,
+      success: false,
+      message: "Failed to fetch requirements",
+      errors: (error as Error).message || "Something went wrong",
     });
   }
 };
@@ -129,7 +117,7 @@ export const updateRequirements = async (req: Request, res: Response) => {
   }
 };
 
-export const getMyRequirement = async (req: Request, res: Response) => {
+export const getMyRequirements = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id as string | undefined;
 
@@ -142,16 +130,16 @@ export const getMyRequirement = async (req: Request, res: Response) => {
       });
     }
 
-    const requirement = await getMyRequirementService(userId);
+    const requirements = await getMyRequirementsService(userId);
 
     return sendResponse({
       res,
       statusCode: 200,
       success: true,
-      data: requirement,
-      message: requirement
-        ? "Requirement fetched successfully"
-        : "No requirement found. Create one Requirement POST",
+      data: requirements,
+      message: requirements.length > 0
+        ? "Requirements fetched successfully"
+        : "No requirements found.",
     });
   } catch (error) {
     return sendResponse({
@@ -204,23 +192,23 @@ export const deleteRequirement = async (req: Request, res: Response) => {
         success: false,
         message: "Requirement ID is required",
       });
-    } 
+    }
 
     const dlt = await deleteRequirementService(requirementId);
 
     return sendResponse({
-        res,
-        statusCode: 200,
-        success: true,
-        message: "Requirement deleted successfully",
+      res,
+      statusCode: 200,
+      success: true,
+      message: "Requirement deleted successfully",
     });
   } catch (error) {
     return sendResponse({
-        res,
-        statusCode: 500,
-        success: false,
-        message: "Failed to delete requirement",
-        errors: (error as Error).message || "Something went wrong",
+      res,
+      statusCode: 500,
+      success: false,
+      message: "Failed to delete requirement",
+      errors: (error as Error).message || "Something went wrong",
     });
   }
 };

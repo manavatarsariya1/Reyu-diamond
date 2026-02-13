@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import Kyc from "../models/kyc.model.js";
+import KYC from "../models/kyc.model.js";
 import type { IKyc } from "../models/kyc.model.js";
 import User from "../models/User.model.js";
 import sendEmail from "../services/email.service.js";
@@ -7,14 +7,34 @@ import { sendToAdminTemplate } from "../utils/email.template.js";
 
 export interface SubmitKycInput {
   userId: string;
-  aadhaarNumber: string;
-  panNumber: string;
-  aadhaarImageUrl: string;
-  panImageUrl: string;
+  firstName: string;
+  middleName?: string | undefined;
+  lastName: string;
+  dob: Date;
+  phone: string;
+  address: {
+    residentialAddress: string;
+    city: string;
+    state: string;
+    pincode: string;
+    country: string;
+  };
+  aadhaar: {
+    aadhaarHash: string;
+    aadhaarNumber: string;
+    url: string;
+    publicId: string;
+  };
+  pan: {
+    panHash: string;
+    panNumber: string;
+    url: string;
+    publicId: string;
+  };
 }
 
 export const findKycByUserId = (userId: string) => {
-  return Kyc.findOne({ userId });
+  return KYC.findOne({ userId });
 };
 
 export const isVerifedService = async (userId: string) => {
@@ -23,23 +43,22 @@ export const isVerifedService = async (userId: string) => {
   }
   const user = await User.findById(userId).select("isVerified");
   return user?.isVerified ?? false;
-}
+};
 
-export const upsertKycForUser = async ({
-  userId,
-  aadhaarNumber,
-  panNumber,
-  aadhaarImageUrl,
-  panImageUrl,
-}: SubmitKycInput): Promise<IKyc | null> => {
-  const kyc = await Kyc.findOneAndUpdate(
+export const upsertKycForUser = async (
+  input: SubmitKycInput
+): Promise<IKyc | null> => {
+  const { userId, ...kycData } = input;
+
+  const kyc = await KYC.findOneAndUpdate(
     { userId },
     {
       userId,
-      aadhaarNumber,
-      panNumber,
-      aadhaarImageUrl,
-      panImageUrl,
+      ...kycData,
+      documents: {
+        aadhaar: input.aadhaar,
+        pan: input.pan,
+      },
       status: "pending",
       rejectionReason: "",
     },
@@ -58,11 +77,11 @@ export const sendMailToAllAdmins = async (userId: string): Promise<void> => {
 
   await Promise.all(
     admins
-    .filter((admin) => !!admin.email)
-    .map((admin) =>
-      sendEmail({
-        to: admin.email,
-        subject: "Approval required for new user account",
+      .filter((admin) => !!admin.email)
+      .map((admin) =>
+        sendEmail({
+          to: admin.email,
+          subject: "Approval required for new user account",
           //@ts-ignore
           html: sendToAdminTemplate({
             _id: user._id.toString(),

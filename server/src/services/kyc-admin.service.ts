@@ -1,9 +1,9 @@
-import Kyc, { type KYCStatus } from "../models/kyc.model.js";
+import Kyc, { type KycStatus } from "../models/kyc.model.js";
 import User from "../models/User.model.js";
 
 interface ReviewKycInput {
   userId: string;
-  status: KYCStatus;
+  status: KycStatus;
   rejectionReason?: string;
 }
 

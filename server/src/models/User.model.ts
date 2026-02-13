@@ -47,7 +47,7 @@ const userSchema = new mongoose.Schema<IUser>(
       default: "user",
     },
     otp: {
-      type: Number,
+      type: String,
       select: false,
     },
     otpExpiresAt: {

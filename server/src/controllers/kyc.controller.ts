@@ -1,12 +1,14 @@
 import type { Request, Response } from "express";
 import sendResponse from "../utils/api.response.js";
-import { uploadToCloudinary } from "../services/cloudinary.service.js";
+import { uploadToCloudinaryDetails } from "../services/cloudinary.service.js";
 import { notifyAdminsForKyc } from "../services/notification.service.js";
 import {
   upsertKycForUser,
   sendMailToAllAdmins,
   isVerifedService
 } from "../services/kyc.service.js";
+
+import crypto from "crypto";
 
 export const submitKyc = async (req: Request, res: Response) => {
   try {
@@ -22,7 +24,7 @@ export const submitKyc = async (req: Request, res: Response) => {
 
     const otpVerified = await isVerifedService(userId);
 
-    if(!otpVerified) {
+    if (!otpVerified) {
       return sendResponse({
         res,
         statusCode: 400,
@@ -31,25 +33,42 @@ export const submitKyc = async (req: Request, res: Response) => {
       });
     }
 
-    const { aadhaarNumber, panNumber } = (req.body ?? {}) as {
-      aadhaarNumber?: string;
-      panNumber?: string;
+    const {
+      firstName,
+      middleName,
+      lastName,
+      dob,
+      phone,
+      address,
+      documents
+    } = req.body as {
+      firstName: string;
+      middleName?: string;
+      lastName: string;
+      dob: string;
+      phone: string;
+      address: {
+        residentialAddress: string;
+        city: string;
+        state: string;
+        pincode: string;
+        country: string;
+      };
+      documents: {
+        aadhaar: { aadhaarNumber: string };
+        pan: { panNumber: string };
+      };
     };
 
-    const files = req.files as
-      | { [fieldname: string]: Express.Multer.File[] }
-      | undefined;
-    const aadhaarFile = files?.["aadhaar"]?.[0];
-    const panFile = files?.["pan"]?.[0];
+    const { residentialAddress, city, state, pincode, country } = address;
+    const { aadhaarNumber } = documents.aadhaar;
+    const { panNumber } = documents.pan;
 
-    if (!aadhaarNumber || !panNumber) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Aadhaar number and PAN number are required",
-      });
-    }
+    const files = req.files as Express.Multer.File[];
+
+    // Find files by fieldname (partial match to accept various nesting)
+    const aadhaarFile = files?.find(f => f.fieldname.includes("aadhaar"));
+    const panFile = files?.find(f => f.fieldname.includes("pan"));
 
     if (!aadhaarFile || !panFile) {
       return sendResponse({
@@ -60,20 +79,48 @@ export const submitKyc = async (req: Request, res: Response) => {
       });
     }
 
-    const aadhaarUrl = await uploadToCloudinary( aadhaarFile, "kyc/aadhaar");
-    const panUrl = await uploadToCloudinary(panFile, "kyc/pan");
+    // Helper for hashing
+    const hashValue = (value: string) =>
+      crypto.createHash("sha256").update(value).digest("hex");
+
+    // Upload documents and get public_id
+    const aadhaarUpload = await uploadToCloudinaryDetails(
+      aadhaarFile,
+      "kyc/aadhaar"
+    );
+    const panUpload = await uploadToCloudinaryDetails(panFile, "kyc/pan");
 
     await upsertKycForUser({
       userId,
-      aadhaarNumber,
-      panNumber,
-      aadhaarImageUrl: aadhaarUrl,
-      panImageUrl: panUrl,
+      firstName,
+      middleName,
+      lastName,
+      dob: new Date(dob),
+      phone,
+      address: {
+        residentialAddress,
+        city,
+        state,
+        pincode,
+        country: country || "IN",
+      },
+      aadhaar: {
+        aadhaarHash: hashValue(aadhaarNumber),
+        aadhaarNumber,
+        url: aadhaarUpload.secure_url,
+        publicId: aadhaarUpload.public_id,
+      },
+      pan: {
+        panHash: hashValue(panNumber),
+        panNumber,
+        url: panUpload.secure_url,
+        publicId: panUpload.public_id,
+      },
     });
 
     await notifyAdminsForKyc(userId);
     await sendMailToAllAdmins(userId);
-    
+
     return sendResponse({
       res,
       statusCode: 201,
