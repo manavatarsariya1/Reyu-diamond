@@ -12,7 +12,8 @@ export interface IUser extends Document {
   isVerified: boolean;
   otpAttempts: number;
   lastOtpSent: Date;
-  fcmToken?: string | null;
+  fcmToken?: string | null | undefined;
+  stripeAccountId?: string | undefined;
   comparePassword(enteredPassword: string): Promise<boolean>;
 }
 
@@ -49,23 +50,27 @@ const userSchema = new mongoose.Schema<IUser>(
       type: Number,
       select: false,
     },
-    otpExpiresAt : {
-      type : Date,
+    otpExpiresAt: {
+      type: Date,
     },
     isVerified: {
       type: Boolean,
       default: false,
     },
-    otpAttempts : {
-      type : Number,
-      default : 0,
+    otpAttempts: {
+      type: Number,
+      default: 0,
     },
-    lastOtpSent : {
-      type : Date,
+    lastOtpSent: {
+      type: Date,
     },
     fcmToken: {
       type: String,
       default: null,
+    },
+    stripeAccountId: {
+      type: String,
+      select: false,
     },
   },
   { timestamps: true }

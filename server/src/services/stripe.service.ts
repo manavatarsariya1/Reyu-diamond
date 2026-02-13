@@ -1,0 +1,311 @@
+import stripe, { getStripeAccountParams, getAccountLinkParams } from "../utils/stripe.utility.js";
+import type { IUser } from "../models/User.model.js";
+import User from "../models/User.model.js";
+import Deal from "../models/Deal.model.js";
+import Escrow from "../models/Escrow.model.js";
+import type { Request } from "express";
+
+/**
+ * Service to handle Stripe related operations
+ */
+export class StripeService {
+    /**
+     * Create a generic connected account for a user
+     */
+    async createStripeAccount(user: IUser): Promise<string> {
+        try {
+            console.log("in 0");
+
+            if (user.stripeAccountId) {
+                console.log("in 1");
+                return user.stripeAccountId;
+            }
+            console.log("in 2");
+
+            const params = getStripeAccountParams(user.email, user._id.toString());
+            console.log("in 3 params: ", params);
+            const account = await stripe.accounts.create(params);
+            console.log("in 4: ", account);
+
+            user.stripeAccountId = account.id;
+            await user.save();
+
+            return account.id;
+        } catch (error: any) {
+            console.error("Error creating Stripe account:", error);
+            throw new Error(`Failed to create Stripe account: ${error.message}`);
+        }
+    }
+
+    /**
+     * Validate if account has necessary capabilities
+     */
+    async validateAccountCapability(accountId: string): Promise<boolean> {
+        const account = await stripe.accounts.retrieve(accountId);
+
+        // Check if transfers capability is active
+        const transfers = account.capabilities?.transfers;
+        const cardPayments = account.capabilities?.card_payments;
+
+        if (transfers !== 'active' && account.type !== 'standard') {
+            // Standard accounts might manage this differently, but for express/custom it's key.
+            // For standard in test mode, it should still be active if onboarded.
+            console.warn(`Stripe Account ${accountId} capability 'transfers' is ${transfers}`);
+        }
+
+        if (!account.payouts_enabled) {
+            console.warn(`Stripe Account ${accountId} payouts_enabled is false`);
+            // return false; // Strict check?
+        }
+
+        // For the specific error "insufficient_capabilities_for_transfer", checking capabilities matches
+        if (transfers === 'inactive') {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Create an account link for onboarding
+     */
+    async createOnboardingLink(accountId: string, req?: Request): Promise<string> {
+        try {
+            // Determine base URL from request or fallback to a default (e.g., localhost)
+            // Ideally this should be in config, but for now we'll infer or use a placeholder
+            // In production, this must be the actual frontend URL
+            const origin = req?.get("origin") || "http://localhost:5173";
+
+            const params = getAccountLinkParams(accountId, origin);
+            const accountLink = await stripe.accountLinks.create(params);
+
+            return accountLink.url;
+        } catch (error: any) {
+            console.error("Error creating onboarding link:", error);
+            // Check if error is due to account not found
+            if (error.raw?.code === 'account_invalid' ||
+                error?.message?.includes('does not exist') ||
+                error?.raw?.message?.includes('does not exist')) {
+                throw new Error("ACCOUNT_INVALID");
+            }
+            throw new Error(`Failed to create onboarding link: ${error.message}`);
+        }
+    }
+
+    /**
+     * Create a Payment Intent for a Deal
+     */
+    async createPaymentIntent(
+        deal: any
+    ): Promise<{ clientSecret: string; paymentIntentId: string }> {
+        try {
+            // Prevent duplicate escrow
+            const existingEscrow = await Escrow.findOne({ deal: deal._id });
+
+            if (existingEscrow) {
+                if (
+                    existingEscrow.status !== "FAILED" &&
+                    existingEscrow.status !== "CANCELLED"
+                ) {
+                    const retrievedIntent = await stripe.paymentIntents.retrieve(
+                        existingEscrow.paymentIntentId
+                    );
+
+                    if (!retrievedIntent.client_secret) {
+                        throw new Error("Failed to retrieve client secret");
+                    }
+
+                    return {
+                        clientSecret: retrievedIntent.client_secret,
+                        paymentIntentId: existingEscrow.paymentIntentId,
+                    };
+                }
+            }
+
+            // Convert to cents
+            const amountInCents = Math.round(deal.agreedAmount * 100);
+
+            const metadata = {
+                dealId: deal._id.toString(),
+                buyerId: deal.buyerId.toString(),
+                sellerId: deal.sellerId.toString(),
+                type: "ESCROW_PAYMENT",
+            };
+
+            /**
+             * ⭐ IMPORTANT CHANGE ⭐
+             * card only + no redirects
+             */
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amountInCents,
+                currency: deal.currency.toLowerCase(),
+                metadata,
+                capture_method: "automatic",
+                payment_method_types: ["card"],
+            });
+
+            if (!paymentIntent.client_secret) {
+                throw new Error("Failed to generate client secret");
+            }
+
+            // Create escrow
+            await Escrow.create({
+                deal: deal._id,
+                buyer: deal.buyerId,
+                seller: deal.sellerId,
+                amount: deal.agreedAmount,
+                currency: deal.currency.toLowerCase(),
+                status: "PENDING",
+                paymentIntentId: paymentIntent.id,
+                platformFeePercentage: 3,
+            });
+
+            return {
+                clientSecret: paymentIntent.client_secret,
+                paymentIntentId: paymentIntent.id,
+            };
+        } catch (error: any) {
+            console.error("Error creating payment intent:", error);
+            throw new Error(`Failed to create payment intent: ${error.message}`);
+        }
+    }
+
+    async releaseEscrow(dealId: string) {
+        // find escrow
+        const escrow = await Escrow.findOne({ deal: dealId });
+
+        if (!escrow) {
+            throw new Error("Escrow not found");
+        }
+
+        if (escrow.status !== "HELD") {
+            throw new Error("Escrow is not in releasable state (payment Status: " + escrow.status + ")");
+        }
+
+        if (!escrow.buyerConfirmedAt) {
+            throw new Error("Buyer has not confirmed delivery yet.");
+        }
+
+        // find seller
+        const seller = await User.findById(escrow.seller).select("stripeAccountId");
+        console.log("Seller:", seller);
+        if (!seller || !seller.stripeAccountId) {
+            throw new Error("Seller not onboarded with Stripe. First do Onboarding process.");
+        }
+
+        // Validate capabilities
+        const capabilitiesValid = await this.validateAccountCapability(seller.stripeAccountId);
+        if (!capabilitiesValid) {
+            throw new Error("Seller Stripe account missing necessary capabilities (transfers). Please visit Stripe Dashboard or re-onboard.");
+        }
+
+        // calculate fees
+        const totalAmount = Math.round(escrow.amount * 100);
+        const platformFee = Math.round(
+            (totalAmount * escrow.platformFeePercentage) / 100
+        );
+
+        const sellerAmount = totalAmount - platformFee;
+
+        // transfer to seller
+        const transfer = await stripe.transfers.create({
+            amount: sellerAmount,
+            currency: escrow.currency,
+            destination: seller.stripeAccountId,
+            metadata: {
+                dealId: dealId.toString(),
+                escrowId: escrow._id.toString(),
+            },
+        });
+
+        // update escrow
+        escrow.status = "RELEASED";
+        escrow.stripeTransferId = transfer.id;
+        await escrow.save();
+
+        // update deal
+        await Deal.findByIdAndUpdate(dealId, {
+            status: "COMPLETED",
+        });
+
+        return {
+            transferId: transfer.id,
+            sellerAmount: sellerAmount / 100,
+            platformFee: platformFee / 100,
+        };
+    }
+
+    async refundEscrow(dealId: string) {
+        const escrow = await Escrow.findOne({ deal: dealId });
+
+        if (!escrow) {
+            throw new Error("Escrow not found");
+        }
+
+        if (escrow.status === "RELEASED") {
+            throw new Error("Cannot refund after release");
+        }
+
+        if (escrow.status === "REFUNDED") {
+            throw new Error("Already refunded");
+        }
+
+        // Stripe refund
+        const refund = await stripe.refunds.create({
+            payment_intent: escrow.paymentIntentId,
+        });
+
+        // update escrow
+        escrow.status = "REFUNDED";
+        escrow.stripeRefundId = refund.id;
+        await escrow.save();
+
+        // update deal
+        await Deal.findByIdAndUpdate(dealId, {
+            status: "CANCELLED",
+        });
+
+        return {
+            refundId: refund.id,
+            amount: refund.amount / 100,
+        };
+    }
+
+    async buyerConfirmDelivery(
+        dealId: string,
+        userId: string,
+        notes?: string
+    ) {
+        const escrow = await Escrow.findOne({ deal: dealId });
+
+        if (!escrow) {
+            throw new Error("Escrow not found");
+        }
+
+        // must be buyer
+        if (escrow.buyer.toString() !== userId.toString()) {
+            throw new Error("Only buyer can confirm delivery");
+        }
+
+        if (escrow.status !== "HELD") {
+            throw new Error("Escrow not ready for confirmation (payment Status: " + escrow.status + ")");
+        }
+
+        // save confirmation
+        escrow.buyerConfirmedAt = new Date();
+        escrow.buyerConfirmationNotes = notes;
+
+        escrow.timeline.push({
+            event: "BUYER_CONFIRMED",
+            timestamp: new Date(),
+            userId: escrow.buyer,
+            notes,
+        });
+
+        await escrow.save();
+
+        return await this.releaseEscrow(dealId);
+    }
+}
+
+export const stripeService = new StripeService();

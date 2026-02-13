@@ -27,7 +27,7 @@ export interface IDeal extends Document {
     transactionId?: string;
   };
 
-  shipping?: {
+  shipping: {
     courier?: string;
     trackingNumber?: string;
     shippedAt?: Date;
@@ -38,8 +38,12 @@ export interface IDeal extends Document {
     reason: string;
     raisedBy: mongoose.Types.ObjectId;
     raisedAt: Date;
+
+    resolvedBy?: mongoose.Types.ObjectId;
     resolvedAt?: Date;
-    resolution?: string;
+
+    resolution?: "REFUND_BUYER" | "RELEASE_SELLER";
+    adminNote?: string;
   };
 
   history: {
@@ -127,8 +131,10 @@ const dealSchema = new mongoose.Schema<IDeal>(
       reason: String,
       raisedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       raisedAt: Date,
+      resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       resolvedAt: Date,
       resolution: String,
+      adminNote: String,
     },
 
     history: [

@@ -59,12 +59,12 @@ export const createBid = async (req: Request, res: Response) => {
       data: bid ?? null,
     });
   } catch (error: any) {
-    if (error.message === "You cannot bid on your own inventory") {
+    if (error.message === "action owner is can not be do bid on the owner's invenory") {
       return sendResponse({
         res,
         statusCode: 403,
         success: false,
-        message: "You cannot bid on your own inventory",
+        message: "action owner is can not be do bid on the owner's invenory",
       });
     }
 

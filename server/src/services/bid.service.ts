@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Bid from "../models/Bid.model.js";
 import Inventory from "../models/Inventory.model.js";
 import { Auction } from "../models/Auction.model.js";
+import { createConversation } from "./chat.service.js";
 
 interface CreateBidInput {
   auctionId: string;
@@ -40,10 +41,10 @@ export const createBidService = async ({
 
   // 4. Check if buyer is the seller (not allowed)
   if (inventory.sellerId.toString() === buyerId) {
-    throw new Error("You cannot bid on your own inventory");
+    throw new Error("action owner is can not be do bid on the owner's invenory");
   }
 
-  if (inventory.status === "SOLD" || inventory.locked) {
+  if (inventory.status === "SOLD" || (!inventory.locked && inventory.status !== "LISTED")) {
     throw new Error("Inventory is not available for bidding");
   }
 
@@ -83,7 +84,6 @@ export const createBidService = async ({
         { session }
       );
 
-      // Create new bid
       const bid = await Bid.create(
         [
           {
@@ -107,12 +107,25 @@ export const createBidService = async ({
       auction.bidIds.push(createdBid._id as mongoose.Types.ObjectId);
       await auction.save({ session });
 
-      // Update Inventory price (optional, but keeping for consistency if needed)
       inventory.currentBiddingPrice = bidAmount;
       await inventory.save({ session });
 
       await session.commitTransaction();
       session.endSession();
+
+      const bidObj = bid[0];
+
+      // Create conversation between buyer and seller
+      // inventory.sellerId is the owner of the item/auction
+      try {
+        await createConversation(
+          [buyerId, inventory.sellerId.toString()],
+          auctionId
+        );
+      } catch (chatError) {
+        console.error("Failed to create conversation after bid:", chatError);
+        // Don't fail the bid creation if chat creation fails, just log it
+      }
 
       return bid[0];
     } catch (error) {
@@ -152,6 +165,16 @@ export const createBidService = async ({
     // Update Inventory price
     inventory.currentBiddingPrice = bidAmount;
     await inventory.save();
+
+    // Create conversation between buyer and seller
+    try {
+      await createConversation(
+        [buyerId, inventory.sellerId.toString()],
+        auctionId
+      );
+    } catch (chatError) {
+      console.error("Failed to create conversation after bid:", chatError);
+    }
 
     return bid;
   }
