@@ -10,6 +10,7 @@ export interface IUser extends Document {
   otp?: string | undefined;
   otpExpiresAt?: Date | undefined;
   isVerified: boolean;
+  accountStatus: "ACTIVE" | "DEACTIVE";
   isKycVerified: boolean;
   otpAttempts: number;
   lastOtpSent: Date;
@@ -57,6 +58,11 @@ const userSchema = new mongoose.Schema<IUser>(
     isVerified: {
       type: Boolean,
       default: false,
+    },
+    accountStatus: {
+      type: String,
+      enum: ["ACTIVE", "DEACTIVE"],
+      default: "ACTIVE"
     },
     isKycVerified: {
       type: Boolean,
