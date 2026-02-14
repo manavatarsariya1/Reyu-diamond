@@ -8,11 +8,15 @@ import { connectDB } from './config/db.js';
 import { createServer } from "http";
 import { initSocket } from "./socket.js";
 import { stripeWebhookHandler } from "./controllers/stripe.controller.js";
+import { initAuctionCron } from "./cron/auction.cron.js";
 
 dotenv.config();
 
 // Connect to MongoDB
 connectDB();
+
+// Initialize Cron Jobs
+// initAuctionCron();
 
 const app = express();
 const httpServer = createServer(app);

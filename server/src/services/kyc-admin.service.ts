@@ -23,7 +23,9 @@ export const reviewKycService = async ({
   await kyc.save();
 
   if (status === "approved") {
-    await User.findByIdAndUpdate(userId, { isVerified: true });
+    await User.findByIdAndUpdate(userId, { isVerified: true, isKycVerified: true });
+  } else {
+    await User.findByIdAndUpdate(userId, { isKycVerified: false });
   }
 
   return kyc;

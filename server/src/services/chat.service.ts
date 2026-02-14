@@ -2,6 +2,7 @@ import Chat from "../models/Chat.model.js";
 import Message from "../models/Message.model.js";
 import mongoose from "mongoose";
 import { getIO } from "../socket.js";
+import { uploadToCloudinaryDetails, deleteFromCloudinary } from "../services/cloudinary.service.js";
 
 export const createConversation = async (
   participants: string[],
@@ -32,53 +33,6 @@ export const createConversation = async (
   });
 };
 
-export const sendMessage = async (
-  conversationId: string,
-  senderId: string,
-  content: string
-) => {
-  const chat = await Chat.findById(conversationId);
-
-  if (!chat) {
-    const err: any = new Error("Conversation not found");
-    err.statusCode = 404;
-    throw err;
-  }
-
-  if (!chat.participants.some(p => p.toString() === senderId)) {
-    const err: any = new Error("You are Not participant of this conversation");
-    err.statusCode = 403;
-    throw err;
-  }
-
-  const message = await Message.create({
-    conversationId,
-    sender: senderId,
-    content,
-    readBy: [senderId],
-  });
-
-  chat.lastMessage = message._id as mongoose.Types.ObjectId;
-
-  chat.participants.forEach(p => {
-    const id = p.toString();
-    if (id !== senderId) {
-      const count = chat.unreadCounts.get(id) || 0;
-      chat.unreadCounts.set(id, count + 1);
-    }
-  });
-
-  await chat.save();
-
-  const populated = await message.populate("sender", "username email");
-
-  // 🔥 REALTIME EMIT
-  const io = getIO();
-  io.to(conversationId).emit("new_message", populated);
-
-  return populated;
-};
-
 export const getUserConversations = async (userId: string) => {
   return Chat.find({ participants: userId })
     .populate("participants", "username email")
@@ -90,27 +44,29 @@ export const getUserConversations = async (userId: string) => {
     .sort({ updatedAt: -1 });
 };
 
-export const getConversationMessages = async (
-  conversationId: string,
-  userId: string
-) => {
-  return Message.find({ conversationId })
-    .populate("sender", "username email")
-    .sort({ createdAt: 1 });
-};
-
 export const markMessagesAsRead = async (
   conversationId: string,
   userId: string
 ) => {
+  const chat = await Chat.findById(conversationId);
+
+  if (!chat) {
+    const err: any = new Error("Conversation not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (!chat.participants.some((p) => p.toString() === userId)) {
+    const err: any = new Error("You are not a participant of this conversation");
+    err.statusCode = 403;
+    throw err;
+  }
+
   await Message.updateMany(
     { conversationId, readBy: { $ne: userId } },
     { $addToSet: { readBy: userId } }
   );
 
-  const chat = await Chat.findById(conversationId);
-  if (chat) {
-    chat.unreadCounts.set(userId, 0);
-    await chat.save();
-  }
+  chat.unreadCounts.set(userId, 0);
+  await chat.save();
 };

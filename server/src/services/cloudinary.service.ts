@@ -69,3 +69,19 @@ export async function uploadBufferToCloudinary(
     stream.end(buffer);
   });
 }
+export async function deleteFromCloudinary(
+  publicId: string,
+  resourceType: "image" | "video" | "auto" | "raw" = "image"
+): Promise<void> {
+  Cloudinary();
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.destroy(
+      publicId,
+      { resource_type: resourceType },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve();
+      }
+    );
+  });
+}
