@@ -9,6 +9,7 @@ import { createServer } from "http";
 import { initSocket } from "./socket.js";
 import { stripeWebhookHandler } from "./controllers/stripe.controller.js";
 import { initAuctionCron } from "./cron/auction.cron.js";
+import { initPaymentCron } from "./cron/payment.cron.js";
 
 dotenv.config();
 
@@ -17,6 +18,7 @@ connectDB();
 
 // Initialize Cron Jobs
 // initAuctionCron();
+// initPaymentCron();
 
 const app = express();
 const httpServer = createServer(app);

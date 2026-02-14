@@ -18,7 +18,7 @@ export const register = async (req: Request, res: Response) => {
 
     const user = await registerUser({ username, email, password });
     const token = sendToken(user._id.toString());
- 
+
     if (fcmToken) {
       user.fcmToken = fcmToken;
       await user.save();
@@ -100,6 +100,16 @@ export const login = async (req: Request, res: Response) => {
     const { email, password, fcmToken } = req.body;
     const user = await loginUser({ email, password });
 
+    if (user.accountStatus === "DEACTIVE") {
+      return sendResponse({
+        res,
+        statusCode: 403,
+        success: false,
+        message: "Account Deactivated",
+        errors: "Your account has been deactivated. Please contact support.",
+      });
+    }
+
     if (fcmToken) {
       user.fcmToken = fcmToken;
       await user.save();
@@ -124,7 +134,7 @@ export const login = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.log(err);
-    
+
     if (err.message === "Please verify your email first") {
       return sendResponse({
         res,
@@ -144,7 +154,7 @@ export const login = async (req: Request, res: Response) => {
         errors: "Invalid email or password",
       });
     }
-    
+
     return sendResponse({
       res,
       statusCode: 400,
@@ -185,7 +195,7 @@ export const getProfile = async (req: Request, res: Response) => {
         message: "Not authorized",
       });
     }
-    
+
     const user = await getUserById(userId);
 
     if (!user) {
