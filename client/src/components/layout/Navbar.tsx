@@ -16,6 +16,7 @@ const Navbar: React.FC = () => {
 
   const LogoutHandler = () => {
 
+    sessionStorage.setItem("didRun", ""); // mark as run
     dispatch(logout());
     navigate("/login")
   }

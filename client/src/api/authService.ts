@@ -1,12 +1,12 @@
+import api from "./axios";
+
 // auth.service.ts
 export interface User {
   id: string;
-  name: string;
+  username: string;
   email: string;
-}
-
-interface UserStored extends User {
-  password: string;
+  role: "admin" | "user";
+  isEmailVerified: boolean;
 }
 
 export interface LoginPayload {
@@ -14,45 +14,157 @@ export interface LoginPayload {
   password: string;
 }
 
-export interface RegisterPayload extends LoginPayload {
-  name: string;
+export interface RegisterPayload {
+  username: string;
+  email: string;
+  password: string;
+}
+
+export interface VerifyOtpPayload {
+  email: string;
+  otp: string;
+}
+
+export interface ResendOtpPayload {
+  email: string;
+}
+
+// Backend response interfaces
+interface ApiResponse<T = any> {
+  success: boolean;
+  message: string;
+  data?: T;
+  errors?: string;
 }
 
 export class AuthService {
   // LOGIN
   async login(payload: LoginPayload): Promise<User> {
-    const users: UserStored[] = JSON.parse(localStorage.getItem("users") || "[]");
+    try {
+      const response = await api.post<ApiResponse>("/auth/login", payload);
 
-    const user = users.find(u => u.email === payload.email && u.password === payload.password);
+      if (!response.data.success) {
+        throw new Error(response.data.message || "Invalid email or password");
+      }
 
-    if (user) {
-      const { password, ...safeUser } = user;
-      localStorage.setItem("currentUser", JSON.stringify(safeUser));
-      return safeUser;
+      const { user,token } = response.data.data;
+      // const userData = response.data.data;
+      // const user: User = {
+      //   id: userData.user._id || userData.user.id,
+      //   username: userData.user.username,
+      //   email: userData.user.email,
+      //   role: userData.user.role,
+      //   isEmailVerified: userData.user.isEmailVerified,
+      // };
+
+      // localStorage.setItem("currentUser", JSON.stringify(user));
+      localStorage.setItem("token", JSON.stringify(token));
+
+      return user;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || "Login failed";
+      throw new Error(errorMessage);
     }
-
-    throw new Error("Invalid email or password");
   }
 
   // REGISTER
-  async register(payload: RegisterPayload): Promise<User> {
-    const users: UserStored[] = JSON.parse(localStorage.getItem("users") || "[]");
-    if (users.find(u => u.email === payload.email)) {
-      throw new Error("User already exists");
+  async register(payload: RegisterPayload): Promise<{ message: string }> {
+    try {
+      const response = await api.post<ApiResponse>("/auth/register", payload);
+
+
+
+      // console.log("hi")
+      if (!response.data.success) {
+        throw new Error(response.data?.errors || response.data.message || "Registration failed");
+      }
+      // console.log(response.data.errors)
+      // if (response.data.success) {
+      // }
+      return {
+        message: response.data?.message || response.data?.errors || "Registration successful",
+      };
+
+      // Since your backend doesn't return user data on registration,
+      // we'll create a minimal user object
+      // const user: User = {
+      //   id: "", // Will be set after OTP verification
+      //   username: payload.username,
+      //   email: payload.email,
+      //   role: "user",
+      //   isEmailVerified: false,
+      // };
+
+
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.errors || error.response?.data?.message || error.message || "Registration failed";
+      console.log("Error in register:", errorMessage);
+      throw new Error(errorMessage);
     }
-    console.log("hi")
+  }
 
-    const newUser: UserStored = { ...payload, id: Date.now().toString() };
-    users.push(newUser);
-    localStorage.setItem("users", JSON.stringify(users));
+  // VERIFY OTP
+  async verifyOtp(payload: VerifyOtpPayload): Promise<User> {
+    try {
+      // console.log("hwllo")
+      console.log(payload)
+      const response = await api.post<ApiResponse>("/auth/verify-otp", payload);
 
-    const { password, ...safeUser } = newUser;
-    return safeUser;
+      if (!response.data.success) {
+        throw new Error(response.data.message || "OTP verification failed");
+      }
+
+      const { user } = response.data.data;
+
+      // const user = userData ;
+
+      // const user: User = {
+      //   id: userData.user.id || userData.user._id,
+      //   username: userData.user.username,
+      //   email: userData.user.email,
+      //   role: userData.user.role,
+      //   isEmailVerified: true,
+      // };
+
+      // Store user data after successful verification
+      // localStorage.setItem("currentUser", JSON.stringify(token));
+
+      return {
+        user,
+        message: response.data?.errors || response.data?.message,
+      };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || "OTP verification failed";
+      throw new Error(errorMessage);
+    }
+  }
+
+  // RESEND OTP
+  async resendOtp(payload: ResendOtpPayload): Promise<void> {
+    try {
+      const response = await api.post<ApiResponse>("/auth/resend-otp", payload);
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || "Failed to resend OTP");
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || "Failed to resend OTP";
+      throw new Error(errorMessage);
+    }
   }
 
   // LOGOUT
-  logout(): void {
-    localStorage.removeItem("currentUser");
+  async logout(): Promise<void> {
+    try {
+      // Call backend to clear cookie
+      await api.post("/auth/logout");
+
+      localStorage.removeItem("currentUser");
+    } catch (error: any) {
+      // Even if backend logout fails, clear local storage
+      localStorage.removeItem("currentUser");
+      throw new Error(error.response?.data?.message || "Logout failed");
+    }
   }
 
   // GET CURRENT USER
@@ -60,11 +172,11 @@ export class AuthService {
     const user = localStorage.getItem("currentUser");
     return user ? JSON.parse(user) : null;
   }
+
+  // CHECK IF AUTHENTICATED
+  isAuthenticated(): boolean {
+    return !!this.getCurrentUser();
+  }
 }
 
-// Export a singleton instance
-
-// AuthService is a class
-// new AuthService() creates an instance (or copy) of the class
-// That instance (authService) has all the methods: login, register, logout, getCurrentUser and we can use it anywhere in our app
 export const authService = new AuthService();

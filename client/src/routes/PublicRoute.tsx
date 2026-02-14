@@ -5,16 +5,22 @@ import { Navigate } from 'react-router';
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
-     const {user} = useSelector((state) => state.auth);
-      
- 
+    const { user } = useSelector((state: any) => state.auth);
 
-
-    if (user) {
+    if (user?.isEmailVerified && user?.isKycVerified) {
         return <Navigate to="/" />;
     }
 
-   return children
+    if (user?.isEmailVerified && !user?.isKycVerified) {
+        return <Navigate to="/kyc" />;
+    }
+
+    if (user && !user?.isEmailverified) {
+        return <Navigate to="/verify-otp" />;
+    }
+
+
+    return children
 }
 
 export default PublicRoute
