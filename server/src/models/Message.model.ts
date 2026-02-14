@@ -3,7 +3,12 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 export interface IMessage extends Document {
     conversationId: mongoose.Types.ObjectId;
     sender: mongoose.Types.ObjectId;
-    content: string;
+    content?: string;
+    attachments?: {
+        url: string;
+        publicId: string;
+        resourceType: string;
+    }[];
     readBy: mongoose.Types.ObjectId[];
     createdAt: Date;
     updatedAt: Date;
@@ -24,9 +29,15 @@ const messageSchema = new mongoose.Schema<IMessage>(
         },
         content: {
             type: String,
-            required: true,
             trim: true,
         },
+        attachments: [
+            {
+                url: String,
+                publicId: String,
+                resourceType: String,
+            },
+        ],
         readBy: [
             {
                 type: mongoose.Schema.Types.ObjectId,

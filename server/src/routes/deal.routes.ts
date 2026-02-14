@@ -5,18 +5,21 @@ import { dealCreation, dealDetailsById, getAllBids, updateDealStatus, downloadPD
 import { loadUserRole } from "../middlewares/permission.middleware.js";
 import { canAccessDeal } from "../middlewares/canAccessDeal.middleware.js";
 
+import { validate } from "../middlewares/validation.middleware.js";
+import { updateDealStatusSchema, raiseDisputeSchema, resolveDisputeSchema } from "../validation/deal.validation.js";
+
 const router = Router();
 router.use(protect, kycVerifiedOnly);
 
 router.post("/:bidId", dealCreation);
 router.get("/:dealId", loadUserRole, dealDetailsById);
 router.get("/", loadUserRole, getAllBids);
-router.patch("/:dealId", loadUserRole, canAccessDeal, updateDealStatus);
+router.patch("/:dealId", loadUserRole, canAccessDeal, validate(updateDealStatusSchema), updateDealStatus);
 router.post("/:dealId/pdf", loadUserRole, canAccessDeal, downloadPDF);
 
 // cancel, dispute raise, resolve dispute
 router.patch("/:dealId/cancel", cancelDeal);
-router.patch("/:dealId/dispute", raiseDispute);
-router.patch("/:dealId/resolve-dispute", resolveDispute);
+router.patch("/:dealId/dispute", validate(raiseDisputeSchema), raiseDispute);
+router.patch("/:dealId/resolve-dispute", validate(resolveDisputeSchema), resolveDispute);
 
 export default router;

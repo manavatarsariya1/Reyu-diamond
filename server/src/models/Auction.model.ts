@@ -12,6 +12,8 @@ export interface IAuction extends Document {
   bidIds: mongoose.Types.ObjectId[];
   highestBidId?: mongoose.Types.ObjectId;
 
+  status: "ACTIVE" | "CLOSED" | "CANCELLED";
+
   startDate: Date;
   endDate: Date;
 
@@ -56,6 +58,13 @@ const AuctionSchema: Schema<IAuction> = new Schema(
     highestBidId: {
       type: Schema.Types.ObjectId,
       ref: "Bid"
+    },
+
+    status: {
+      type: String,
+      enum: ["ACTIVE", "CLOSED", "CANCELLED"],
+      default: "ACTIVE",
+      index: true
     },
 
     startDate: {

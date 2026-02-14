@@ -3,12 +3,15 @@ import { createAuction, getAuctions, getAuction, updateAuction, deleteAuction } 
 import protect from "../middlewares/auth.middleware.js";
 import { kycVerifiedOnly } from "../middlewares/kyc.middleware.js";
 
+import { validate } from "../middlewares/validation.middleware.js";
+import { createAuctionSchema, updateAuctionSchema } from "../validation/auction.validation.js";
+
 const router = Router();
 
-router.post("/:inventoryId", protect, kycVerifiedOnly, createAuction);
+router.post("/:inventoryId", protect, kycVerifiedOnly, validate(createAuctionSchema), createAuction);
 router.get("/", protect, kycVerifiedOnly, getAuctions);
 router.get("/:auctionId", protect, kycVerifiedOnly, getAuction);
-router.put("/:auctionId", protect, kycVerifiedOnly, updateAuction);
+router.put("/:auctionId", protect, kycVerifiedOnly, validate(updateAuctionSchema), updateAuction);
 router.delete("/:auctionId", protect, kycVerifiedOnly, deleteAuction);
 
 export default router;

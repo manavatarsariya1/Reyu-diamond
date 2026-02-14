@@ -1,5 +1,3 @@
-Usermodel
-
 import mongoose, { Document, Model } from "mongoose";
 import bcrypt from "bcryptjs";
 import isValidEmail from "../utils/email.validator.js";

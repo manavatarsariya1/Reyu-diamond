@@ -34,7 +34,6 @@ export const createBidService = async ({
 
   // 3. Fetch inventory
   const inventory = await Inventory.findById(auction.inventoryId) as any;
-  console.log("Inventory in createBidService:", inventory);
   if (!inventory) {
     throw new Error("Inventory not found");
   }

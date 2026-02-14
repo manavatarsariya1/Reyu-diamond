@@ -52,6 +52,48 @@ export const createDealService = async (bidId: string, userId: string) => {
   return deal;
 };
 
+export const createSystemDealService = async (bidId: string) => {
+  if (!mongoose.Types.ObjectId.isValid(bidId)) {
+    throw new Error("Invalid bid id");
+  }
+
+  // 1. Check if deal already exists for this bid
+  const existingDeal = await Deal.findOne({ bidId });
+  if (existingDeal) {
+    // If deal already exists, return it (idempotency for cron)
+    return existingDeal;
+  }
+
+  // 2. Find bid
+  const bid = await Bid.findById(bidId);
+  if (!bid) {
+    throw new Error("Bid not found");
+  }
+
+  // 3. Find auction, then inventory
+  const auction = await Auction.findById(bid.auctionId);
+  if (!auction) {
+    throw new Error("Auction not found");
+  }
+
+  const inventory = await Inventory.findById(auction.inventoryId);
+  if (!inventory) {
+    throw new Error("Inventory not found");
+  }
+
+  // 4. Create deal (snapshot of current bid + inventory ownership) by system
+  const deal = await Deal.create({
+    bidId: bid._id,
+    auctionId: auction._id,
+    buyerId: bid.buyerId,
+    sellerId: inventory.sellerId,
+    agreedAmount: bid.bidAmount,
+    status: "CREATED",
+  });
+
+  return deal;
+};
+
 function getId(v: any): string {
   if (!v) return "";
   if (v._id) return String(v._id);
