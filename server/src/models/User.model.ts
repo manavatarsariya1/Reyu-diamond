@@ -9,11 +9,12 @@ export interface IUser extends Document {
   role: "admin" | "user";
   otp?: string | undefined;
   otpExpiresAt?: Date | undefined;
-  isEmailVerified: boolean;
+  isVerified: boolean;
   isKycVerified: boolean;
   otpAttempts: number;
   lastOtpSent: Date;
-  fcmToken?: string | null;
+  fcmToken?: string | null | undefined;
+  stripeAccountId?: string | undefined;
   comparePassword(enteredPassword: string): Promise<boolean>;
 }
 
@@ -53,7 +54,7 @@ const userSchema = new mongoose.Schema<IUser>(
     otpExpiresAt: {
       type: Date,
     },
-    isEmailVerified: {
+    isVerified: {
       type: Boolean,
       default: false,
     },
@@ -68,13 +69,13 @@ const userSchema = new mongoose.Schema<IUser>(
     lastOtpSent: {
       type: Date,
     },
-    // fcmToken: {
-    //   type: String,
-    //   default: null,
-    // },
-    fcmTokens: {
-      type: [String],
-      default: [],
+    fcmToken: {
+      type: String,
+      default: null,
+    },
+    stripeAccountId: {
+      type: String,
+      select: false,
     },
   },
   { timestamps: true }
