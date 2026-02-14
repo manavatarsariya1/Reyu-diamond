@@ -10,6 +10,7 @@ export interface IUser extends Document {
   otp?: string | undefined;
   otpExpiresAt?: Date | undefined;
   isVerified: boolean;
+  isKycVerified: boolean;
   otpAttempts: number;
   lastOtpSent: Date;
   fcmToken?: string | null | undefined;
@@ -54,6 +55,10 @@ const userSchema = new mongoose.Schema<IUser>(
       type: Date,
     },
     isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    isKycVerified: {
       type: Boolean,
       default: false,
     },
