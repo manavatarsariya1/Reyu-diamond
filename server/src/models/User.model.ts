@@ -1,3 +1,5 @@
+Usermodel
+
 import mongoose, { Document, Model } from "mongoose";
 import bcrypt from "bcryptjs";
 import isValidEmail from "../utils/email.validator.js";
@@ -9,11 +11,11 @@ export interface IUser extends Document {
   role: "admin" | "user";
   otp?: string | undefined;
   otpExpiresAt?: Date | undefined;
-  isVerified: boolean;
+  isEmailVerified: boolean;
+  isKycVerified: boolean;
   otpAttempts: number;
   lastOtpSent: Date;
-  fcmToken?: string | null | undefined;
-  stripeAccountId?: string | undefined;
+  fcmToken?: string | null;
   comparePassword(enteredPassword: string): Promise<boolean>;
 }
 
@@ -53,7 +55,11 @@ const userSchema = new mongoose.Schema<IUser>(
     otpExpiresAt: {
       type: Date,
     },
-    isVerified: {
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    isKycVerified: {
       type: Boolean,
       default: false,
     },
@@ -64,13 +70,13 @@ const userSchema = new mongoose.Schema<IUser>(
     lastOtpSent: {
       type: Date,
     },
-    fcmToken: {
-      type: String,
-      default: null,
-    },
-    stripeAccountId: {
-      type: String,
-      select: false,
+    // fcmToken: {
+    //   type: String,
+    //   default: null,
+    // },
+    fcmTokens: {
+      type: [String],
+      default: [],
     },
   },
   { timestamps: true }
