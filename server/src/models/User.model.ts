@@ -18,6 +18,35 @@ export interface IUser extends Document {
   comparePassword(enteredPassword: string): Promise<boolean>;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const userSchema = new mongoose.Schema<IUser>(
   {
     username: {
