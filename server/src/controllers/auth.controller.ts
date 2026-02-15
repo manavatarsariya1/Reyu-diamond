@@ -9,6 +9,7 @@ import {
   resendOtpService,
   forgetPasswordService,
   resetPasswordService,
+  sanitizeUser,
 } from "../services/auth.service.js";
 import sendResponse from "../utils/api.response.js";
 
@@ -17,8 +18,8 @@ export const register = async (req: Request, res: Response) => {
     const { username, email, password, fcmToken } = req.body;
 
     const user = await registerUser({ username, email, password });
-    const token = sendToken(user._id.toString());
- 
+    // const token = sendToken(user._id.toString());
+
     if (fcmToken) {
       user.fcmToken = fcmToken;
       await user.save();
@@ -28,7 +29,7 @@ export const register = async (req: Request, res: Response) => {
       res,
       statusCode: 201,
       success: true,
-      data: token,
+      // data: token,
       message:
         "User registered successfully. Please verify your email using the OTP sent to your email address.",
     });
@@ -49,6 +50,15 @@ export const verifyOtp = async (req: Request, res: Response) => {
 
     const user = await verifyUserOtp({ email, otp });
 
+    if (!user) {
+      return sendResponse({
+        res,
+        statusCode: 404,
+        success: false,
+        message: "User not found",
+      });
+    }
+
     const token = sendToken(user._id.toString());
 
     return sendResponse({
@@ -58,12 +68,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
       message: "Email verified successfully.",
       data: {
         token,
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-        },
+        user: sanitizeUser(user)  
       },
     });
   } catch (err: any) {
@@ -100,6 +105,16 @@ export const login = async (req: Request, res: Response) => {
     const { email, password, fcmToken } = req.body;
     const user = await loginUser({ email, password });
 
+    if (user.accountStatus === "DEACTIVE") {
+      return sendResponse({
+        res,
+        statusCode: 403,
+        success: false,
+        message: "Account Deactivated",
+        errors: "Your account has been deactivated. Please contact support.",
+      });
+    }
+
     if (fcmToken) {
       user.fcmToken = fcmToken;
       await user.save();
@@ -114,16 +129,21 @@ export const login = async (req: Request, res: Response) => {
       message: "Login Successful",
       data: {
         token,
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-        },
+        user:sanitizeUser(user) 
       },
     });
   } catch (err: any) {
     console.log(err);
+    
+    if (err.message === "Invalid credentials") {
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: "Login Failed",
+        errors: "Invalid email or password",
+      });
+    }
     
     if (err.message === "Please verify your email first") {
       return sendResponse({
@@ -135,16 +155,7 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    if (err.message === "Invalid credentials") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Login Failed",
-        errors: "Invalid email or password",
-      });
-    }
-    
+
     return sendResponse({
       res,
       statusCode: 400,
@@ -185,7 +196,7 @@ export const getProfile = async (req: Request, res: Response) => {
         message: "Not authorized",
       });
     }
-    
+
     const user = await getUserById(userId);
 
     if (!user) {

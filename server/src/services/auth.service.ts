@@ -22,6 +22,21 @@ export interface OtpInput {
   otp: string;
 }
 
+export const sanitizeUser = (user: IUser) => {
+  if (!user) return null;
+
+  return {
+    _id: user._id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    isVerified: user.isVerified,
+    accountStatus: user.accountStatus,
+    isKycVerified: user.isKycVerified,
+  };
+};
+
+
 export const registerUser = async (
   input: RegisterUserInput
 ): Promise<IUser> => {
@@ -40,16 +55,16 @@ export const registerUser = async (
 
   const otp = generateOTP();
 
-    user.otp = otp;
-    user.otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-    user.lastOtpSent = new Date(Date.now());
+  user.otp = otp;
+  user.otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+  user.lastOtpSent = new Date(Date.now());
 
   await user.save();
 
   await sendEmail({
-      to : user.email,
-      subject : "Verfiy your email",
-      html : otpTemplate(Number(otp)),
+    to: user.email,
+    subject: "Verfiy your email",
+    html: otpTemplate(Number(otp)),
   });
 
   return user;
@@ -95,14 +110,15 @@ export const loginUser = async (
     throw new Error("Invalid credentials");
   }
 
-  if (!user.isVerified) {
-    throw new Error("Please verify your email first");
-  }
-
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {
     throw new Error("Invalid credentials");
   }
+
+  if (!user.isVerified) {
+    throw new Error("Please verify your email first");
+  }
+
 
   return user;
 };
