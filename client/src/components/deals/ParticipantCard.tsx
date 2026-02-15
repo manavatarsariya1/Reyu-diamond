@@ -5,11 +5,11 @@ interface ParticipantCardProps {
     role: "Buyer" | "Seller";
     name: string;
     id: string;
-    isEmailVerified?: boolean;
+    isVerified?: boolean;
 }
 import React from 'react'
 
-const ParticipantCard = ({ role, name, id, isEmailVerified }: ParticipantCardProps) => {
+const ParticipantCard = ({ role, name, id, isVerified }: ParticipantCardProps) => {
 
     return (
         <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4" data-participant-id={id}>
@@ -21,7 +21,7 @@ const ParticipantCard = ({ role, name, id, isEmailVerified }: ParticipantCardPro
             <div className="text-xs text-gray-500 uppercase font-semibold mb-0.5">{role}</div>
             <div className="font-bold text-gray-900 flex items-center gap-1.5">
                 {name}
-                {isEmailVerified && <ShieldCheck className="w-3.5 h-3.5 text-green-500" />}
+                {isVerified && <ShieldCheck className="w-3.5 h-3.5 text-green-500" />}
             </div>
         </div>
 

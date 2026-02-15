@@ -6,7 +6,9 @@ export interface User {
   username: string;
   email: string;
   role: "admin" | "user";
-  isEmailVerified: boolean;
+  isVerified: boolean;
+  accountStatus: "ACTIVE" | "DEACTIVE";
+  isKycVerified: boolean;
 }
 
 export interface LoginPayload {
@@ -47,14 +49,14 @@ export class AuthService {
         throw new Error(response.data.message || "Invalid email or password");
       }
 
-      const { user,token } = response.data.data;
+      const { user, token } = response.data.data;
       // const userData = response.data.data;
       // const user: User = {
       //   id: userData.user._id || userData.user.id,
       //   username: userData.user.username,
       //   email: userData.user.email,
       //   role: userData.user.role,
-      //   isEmailVerified: userData.user.isEmailVerified,
+      //   isVerified: userData.user.isVerified,
       // };
 
       // localStorage.setItem("currentUser", JSON.stringify(user));
@@ -62,8 +64,17 @@ export class AuthService {
 
       return user;
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || "Login failed";
-      throw new Error(errorMessage);
+      // const errorMessage = error.response?.data?.errors || error.response?.data?.message || error.message || "Login failed";
+      // throw new Error(errorMessage);
+
+      throw {
+        message:
+          error.response?.data?.message ||
+          "Login failed",
+        details:
+          error.response?.data?.errors ||
+          error.message,
+      };
     }
   }
 
@@ -92,14 +103,21 @@ export class AuthService {
       //   username: payload.username,
       //   email: payload.email,
       //   role: "user",
-      //   isEmailVerified: false,
+      //   isVerified: false,
       // };
 
 
     } catch (error: any) {
       const errorMessage = error.response?.data?.errors || error.response?.data?.message || error.message || "Registration failed";
       console.log("Error in register:", errorMessage);
-      throw new Error(errorMessage);
+      throw {
+        message:
+          error.response?.data?.message ||
+          "Registration failed",
+        details:
+          error.response?.data?.errors ||
+          error.message,
+      };
     }
   }
 
@@ -123,7 +141,7 @@ export class AuthService {
       //   username: userData.user.username,
       //   email: userData.user.email,
       //   role: userData.user.role,
-      //   isEmailVerified: true,
+      //   isVerified: true,
       // };
 
       // Store user data after successful verification
@@ -131,7 +149,7 @@ export class AuthService {
 
       return {
         user,
-        message: response.data?.errors || response.data?.message,
+        message: response.data?.message || "LoggedIn Successfully",
       };
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || "OTP verification failed";

@@ -24,7 +24,13 @@ function* loginWorker(action: PayloadAction<LoginPayload>) {
         const user: User = yield call([authService, authService.login], action.payload);
         yield put(loginSucceeded(user));
     } catch (error: any) {
-        yield put(loginFailed(error.message || "Login failed"));
+        // yield put(loginFailed(error.message || "Login failed"));
+        yield put(
+            loginFailed({
+                message: error.message || "Login failed",
+                details: error.details,
+            })
+        );
     }
 }
 

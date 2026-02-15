@@ -61,9 +61,9 @@ const AppRoutes = createBrowserRouter([
     {
         path: "/verify-otp",
         element:
-            <PublicRoute>
+            // <PublicRoute>
                 <Verify />
-            </PublicRoute>
+            // </PublicRoute>
     },
     {
         path: "/marketplace",

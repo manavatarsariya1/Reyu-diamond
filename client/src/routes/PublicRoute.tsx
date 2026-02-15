@@ -7,15 +7,15 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     const { user } = useSelector((state: any) => state.auth);
 
-    if (user?.isEmailVerified && user?.isKycVerified) {
+    if (user?.isVerified && user?.isKycVerified) {
         return <Navigate to="/" />;
     }
 
-    if (user?.isEmailVerified && !user?.isKycVerified) {
+    if (user?.isVerified && !user?.isKycVerified) {
         return <Navigate to="/kyc" />;
     }
 
-    if (user && !user?.isEmailverified) {
+    if (user && !user?.isVerified) {
         return <Navigate to="/verify-otp" />;
     }
 

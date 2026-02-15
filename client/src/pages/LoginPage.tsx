@@ -1,23 +1,48 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Diamond, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useDispatch } from "react-redux";
-import { loginRequested } from "@/features/auth/auth.Slice";
+import { useDispatch, useSelector } from "react-redux";
+import { clearLoginState, loginRequested } from "@/features/auth/auth.Slice";
+import type { RootState } from "@/app/store";
+import { toast } from "react-toastify";
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { error } = useSelector((state: RootState) => state.auth.login);
+
+  useEffect(() => {
+    if (error) {
+      toast.error(error.details || error.message || "Login failed");
+
+      if (error.message === "Please verify your email first") {
+        navigate("/verify-otp", {
+          state: {
+            email: email,
+          }
+        });
+      }
+      dispatch(clearLoginState()); // prevent repeat
+    }
+  }, [error, dispatch]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    sessionStorage.setItem("otp_email", email);
     dispatch(loginRequested({ email, password }));
+
+    // if(error) {
+    //   toast.error(error.details || error.message || "Login failed");
+    //   return;
+    // }
 
     // Mock login - would connect to backend
     console.log("Login attempt:", { email, password });

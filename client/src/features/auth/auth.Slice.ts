@@ -5,9 +5,14 @@ import type { User, LoginPayload, RegisterPayload, VerifyOtpPayload, ResendOtpPa
 
 type RequestStatus = "idle" | "loading" | "success" | "error";
 
+interface ApiError {
+  message: string;
+  details?: string;
+}
+
 interface AsyncState {
   status: RequestStatus;
-  error: string | null;
+  error: ApiError | null;
   message: string | null;
 }
 
@@ -35,7 +40,7 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     // LOGIN
-    loginRequested(state) {
+    loginRequested(state, action: PayloadAction<LoginPayload>) {
       state.login.status = "loading";
       state.login.error = null;
       state.login.message = null;
@@ -45,7 +50,7 @@ const authSlice = createSlice({
       state.login.message = "Login successful";
       state.user = action.payload;
     },
-    loginFailed(state, action: PayloadAction<string>) {
+    loginFailed(state, action: PayloadAction<ApiError>) {
       state.login.status = "error";
       state.login.error = action.payload;
     },
@@ -60,7 +65,7 @@ const authSlice = createSlice({
       state.register.status = "success";
        state.register.message = action.payload.message;
     },
-    registerFailed(state, action: PayloadAction<string>) {
+    registerFailed(state, action: PayloadAction<ApiError>) {
       state.register.status = "error";
       state.register.error = action.payload;
     },
@@ -76,7 +81,7 @@ const authSlice = createSlice({
       state.otp.message = action.payload.message;
       state.user = action.payload.user;
     },
-    verifyOtpFailed(state, action: PayloadAction<string>) {
+    verifyOtpFailed(state, action: PayloadAction<ApiError>) {
       state.otp.status = "error";
       state.otp.error = action.payload;
     },
@@ -91,7 +96,7 @@ const authSlice = createSlice({
       state.resendOtp.status = "success";
       state.resendOtp.message = action.payload;
     },
-    resendOtpFailed(state, action: PayloadAction<string>) {
+    resendOtpFailed(state, action: PayloadAction<ApiError>) {
       state.resendOtp.status = "error";
       state.resendOtp.error = action.payload;
     },
@@ -105,6 +110,10 @@ const authSlice = createSlice({
       state.register = { status: "idle", error: null, message: null };
       state.otp = { status: "idle", error: null, message: null };
       state.resendOtp = { status: "idle", error: null, message: null };
+    },
+
+    clearResendOtpState(state) {
+      state.resendOtp = { status: "idle", message: null, error: null };
     },
 
     clearOtpState(state) {
@@ -145,6 +154,7 @@ export const {
   resendOtpSucceeded,
   resendOtpFailed,
   logout,
+  clearResendOtpState,
   clearOtpState,
   clearRegisterState,
   clearLoginState
