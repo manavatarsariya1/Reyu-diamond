@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const createBidSchema = z.object({
-    bidAmount: z.number().min(1, "Bid amount must be positive"),
+    bidAmount: z.coerce.number().min(1, "Bid amount must be positive"),
 });
 
 export const updateBidStatusSchema = z.object({

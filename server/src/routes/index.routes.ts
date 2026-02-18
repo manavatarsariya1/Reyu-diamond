@@ -10,6 +10,10 @@ import dealRoutes from "./deal.routes.js";
 import auctionRoutes from "./auction.routes.js";
 import stripeRoutes from "./stripe.routes.js";
 import chatRoutes from "./chat.routes.js";
+import ratingRoutes from "./rating.routes.js";
+import advertisementRoutes from "./advertisement.routes.js";
+import logRoutes from "./log.routes.js";
+import analyticsRoutes from "./analytics.routes.js";
 
 const router = Router();
 
@@ -23,6 +27,10 @@ router.use("/auction", auctionRoutes);
 router.use("/bid", bidRoutes);
 router.use("/deal", dealRoutes);
 router.use("/stripe", stripeRoutes);
+router.use("/ratings", ratingRoutes);
 router.use("/chat", chatRoutes);
+router.use("/advertisements", advertisementRoutes);
+router.use("/logs", logRoutes);
+router.use("/analytics", analyticsRoutes);
 
 export default router;

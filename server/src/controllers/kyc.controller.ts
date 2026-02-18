@@ -128,6 +128,7 @@ export const submitKyc = async (req: Request, res: Response) => {
       message: "KYC submitted successfully. Awaiting admin approval.",
     });
   } catch (err: any) {
+    console.error("Error in submitKyc:", err);
     return sendResponse({
       res,
       statusCode: 500,

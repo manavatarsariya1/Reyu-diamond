@@ -9,6 +9,26 @@ export const createInventoryService = async (
     images: string[],
     video?: string
 ): Promise<IInventory> => {
+
+    // Check for duplicates
+    const existingInventory = await Inventory.findOne({
+        sellerId: userId,
+        carat: inventoryData.carat as number,
+        cut: inventoryData.cut as string,
+        color: inventoryData.color as string,
+        clarity: inventoryData.clarity as string,
+        shape: inventoryData.shape as string,
+        lab: inventoryData.lab as string,
+        status: { $ne: "SOLD" }
+    });
+
+    if (existingInventory) {
+        throw {
+            statusCode: 400,
+            message: "Duplicate inventory found with same specs (not SOLD)",
+        };
+    }
+
     const newInventory = {
         sellerId: userId,
         barcode,

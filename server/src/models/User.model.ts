@@ -16,6 +16,11 @@ export interface IUser extends Document {
   lastOtpSent: Date;
   fcmToken?: string | null | undefined;
   stripeAccountId?: string | undefined;
+  rating: {
+    average: number;
+    count: number;
+  };
+  badges: string[];
   comparePassword(enteredPassword: string): Promise<boolean>;
 }
 
@@ -82,6 +87,14 @@ const userSchema = new mongoose.Schema<IUser>(
     stripeAccountId: {
       type: String,
       select: false,
+    },
+    rating: {
+      average: { type: Number, default: 0 },
+      count: { type: Number, default: 0 },
+    },
+    badges: {
+      type: [String],
+      default: [],
     },
   },
   { timestamps: true }
