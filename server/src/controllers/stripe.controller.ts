@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { stripeService } from "../services/stripe.service.js";
+import { logService } from "../services/log.service.js";
 import User from "../models/User.model.js";
 import Deal from "../models/Deal.model.js";
 import Escrow from "../models/Escrow.model.js";
@@ -75,6 +76,14 @@ export const initiatePayment = async (req: Request, res: Response) => {
 
         const { clientSecret, paymentIntentId } = await stripeService.createPaymentIntent(deal);
 
+        await logService.createSystemLog({
+            eventType: "PAYMENT_INTENT_INITIATED",
+            targetId: deal._id as any,
+            severity: "INFO",
+            message: `Payment intent created for Deal ${deal._id}`,
+            meta: { paymentIntentId }
+        });
+
         return sendResponse({ res, statusCode: 200, success: true, message: "Payment initiated", data: { clientSecret, paymentIntentId } });
 
     } catch (error: any) {
@@ -102,6 +111,13 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
         );
     } catch (err: any) {
         console.log("❌ Webhook signature failed");
+        await logService.createSystemLog({
+            eventType: "WEBHOOK_ERROR",
+            targetId: null as any, // No user context here usually
+            severity: "ERROR",
+            message: `Webhook signature verification failed: ${err.message}`,
+            meta: { error: err.message, ip: req.ip }
+        });
         return res.sendStatus(400);
     }
 
@@ -133,6 +149,14 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
                 status: "IN_ESCROW",
             });
 
+            await logService.createSystemLog({
+                eventType: "PAYMENT_HELD",
+                targetId: escrow.deal as any,
+                severity: "INFO",
+                message: `Payment succeeded and Escrow funded for Deal ${escrow.deal}`,
+                meta: { paymentIntentId: paymentIntent.id, amount: paymentIntent.amount }
+            });
+
             console.log("✅ Escrow funded, deal moved to IN_ESCROW");
         }
 
@@ -149,6 +173,14 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
             if (escrow) {
                 escrow.status = "FAILED";
                 await escrow.save();
+
+                await logService.createSystemLog({
+                    eventType: "PAYMENT_FAILED",
+                    targetId: escrow.deal as any,
+                    severity: "ERROR",
+                    message: `Payment failed for Deal ${escrow.deal}`,
+                    meta: { paymentIntentId: paymentIntent.id, error: paymentIntent.last_payment_error }
+                });
             }
 
             console.log("❌ Payment failed:", paymentIntent.id);
@@ -167,6 +199,14 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
             if (escrow) {
                 escrow.status = "CANCELLED";
                 await escrow.save();
+
+                await logService.createSystemLog({
+                    eventType: "PAYMENT_FAILED", // or PAYMENT_FAILED
+                    targetId: escrow._id as any,
+                    severity: "WARNING",
+                    message: `Payment canceled for Escrow ${escrow._id}`,
+                    meta: { paymentIntentId: paymentIntent.id }
+                });
             }
 
             console.log("⚠️ Payment cancelled:", paymentIntent.id);
@@ -176,6 +216,13 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
 
     } catch (err: any) {
         console.log("Webhook handler error:", err);
+        await logService.createSystemLog({
+            eventType: "WEBHOOK_ERROR",
+            targetId: null as any,
+            severity: "ERROR",
+            message: `Stripe Webhook Handler Exception: ${err.message}`,
+            meta: { error: err.message, stack: err.stack }
+        });
         return res.sendStatus(500);
     }
 };
@@ -201,6 +248,14 @@ export const releaseEscrow = async (req: Request, res: Response) => {
 
         const result = await stripeService.releaseEscrow(dealId);
 
+        await logService.createSystemLog({
+            eventType: "PAYMENT_RELEASED",
+            targetId: dealId as any,
+            severity: "INFO",
+            message: `Payment released for Deal ${dealId}`,
+            meta: { dealId }
+        });
+
         return sendResponse({ res, statusCode: 200, success: true, message: "Escrow released successfully", data: result });
     } catch (error: any) {
         console.error("Release error:", error);
@@ -212,6 +267,7 @@ export const refundEscrow = async (req: Request, res: Response) => {
     try {
         const { dealId } = req.body;
         const userId = (req as any).user._id || (req as any).user.id;
+        const userRole = (req as any).user.role;
 
         if (!dealId) {
             return sendResponse({ res, statusCode: 400, success: false, message: "Deal ID is required" });
@@ -222,12 +278,22 @@ export const refundEscrow = async (req: Request, res: Response) => {
             return sendResponse({ res, statusCode: 404, success: false, message: "Deal not found" });
         }
 
-        // seller or admin can refund (modify later as needed)
-        if (deal.sellerId.toString() !== userId.toString()) {
+        // seller or admin can refund
+        if (deal.sellerId.toString() !== userId.toString() && userRole !== 'admin') {
             return sendResponse({ res, statusCode: 403, success: false, message: "Not allowed to refund this deal." });
         }
 
         const result = await stripeService.refundEscrow(dealId);
+
+        if (userRole === 'admin') {
+            await logService.createAdminLog({
+                adminId: userId,
+                action: "ESCROW_REFUNDED",
+                targetType: "DEAL",
+                targetId: dealId,
+                description: "Escrow refunded by admin"
+            });
+        }
 
         return sendResponse({ res, statusCode: 200, success: true, message: "Escrow refunded successfully", data: result });
     } catch (error: any) {

@@ -1,12 +1,13 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import sendResponse from "../utils/api.response.js";
+import { logService } from "../services/log.service.js";
 
 export interface AuthRequest extends Request {
   user?: any;
 }
 
-const authMiddleware = (
+const authMiddleware = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
@@ -14,6 +15,13 @@ const authMiddleware = (
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    await logService.createSystemLog({
+      eventType: "UNAUTHORIZED_ACCESS_ATTEMPT",
+      targetId: null as any,
+      severity: "WARNING",
+      message: "Missing or invalid Authorization header",
+      meta: { ip: req.ip, originalUrl: req.originalUrl }
+    });
     return sendResponse({
       res,
       statusCode: 401,
@@ -25,6 +33,13 @@ const authMiddleware = (
   const token = authHeader.split(" ")[1];
 
   if (!token) {
+    await logService.createSystemLog({
+      eventType: "UNAUTHORIZED_ACCESS_ATTEMPT",
+      targetId: null as any,
+      severity: "WARNING",
+      message: "Token missing from Authorization header",
+      meta: { ip: req.ip, originalUrl: req.originalUrl }
+    });
     return sendResponse({
       res,
       statusCode: 401,
@@ -41,7 +56,14 @@ const authMiddleware = (
 
     req.user = decoded;
     next();
-  } catch (err) {
+  } catch (err: any) {
+    await logService.createSystemLog({
+      eventType: "UNAUTHORIZED_ACCESS_ATTEMPT",
+      targetId: null as any,
+      severity: "WARNING",
+      message: `Invalid or expired token: ${err.message}`,
+      meta: { ip: req.ip, originalUrl: req.originalUrl, error: err.message }
+    });
     return sendResponse({
       res,
       statusCode: 401,

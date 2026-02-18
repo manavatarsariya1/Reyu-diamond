@@ -11,6 +11,7 @@ import {
   resetPasswordService,
 } from "../services/auth.service.js";
 import sendResponse from "../utils/api.response.js";
+import { logService } from "../services/log.service.js";
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -33,6 +34,17 @@ export const register = async (req: Request, res: Response) => {
         "User registered successfully. Please verify your email using the OTP sent to your email address.",
     });
   } catch (err: any) {
+    await logService.createSystemLog({
+      eventType: "AUTH_FAILURE",
+      severity: "WARNING",
+      message: `User registration failed for email: ${req.body.email}. Reason: ${err.message}`,
+      meta: {
+        email: req.body.email,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+        error: err.message
+      }
+    });
     return sendResponse({
       res,
       statusCode: 400,
@@ -134,6 +146,19 @@ export const login = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.log(err);
+
+    // Log the system event
+    await logService.createSystemLog({
+      eventType: "AUTH_FAILURE",
+      severity: "WARNING",
+      message: `Login failed for email: ${req.body.email}. Reason: ${err.message}`,
+      meta: {
+        email: req.body.email,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+        error: err.message
+      }
+    });
 
     if (err.message === "Please verify your email first") {
       return sendResponse({

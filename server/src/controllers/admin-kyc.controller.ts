@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import sendResponse from "../utils/api.response.js";
 import { reviewKycService } from "../services/kyc-admin.service.js";
+import { logService } from "../services/log.service.js";
 
 export const reviewKyc = async (req: Request, res: Response) => {
   try {
@@ -28,11 +29,38 @@ export const reviewKyc = async (req: Request, res: Response) => {
       });
     }
 
-    await reviewKycService({
+    const kyc = await reviewKycService({
       userId,
       status,
       ...(rejectionReason !== undefined ? { rejectionReason } : {}),
     });
+
+    // Log admin actions
+    if (status === "approved") {
+      await logService.createAdminLog({
+        adminId: (req as any).user.id,
+        action: "KYC_APPROVED",
+        targetType: "KYC",
+        targetId: kyc._id as any,
+        description: "KYC approved"
+      });
+
+      await logService.createAdminLog({
+        adminId: (req as any).user.id,
+        action: "USER_APPROVED",
+        targetType: "USER",
+        targetId: userId as any,
+        description: "User approved after KYC verification"
+      });
+    } else if (status === "rejected") {
+      await logService.createAdminLog({
+        adminId: (req as any).user.id,
+        action: "KYC_REJECTED",
+        targetType: "KYC",
+        targetId: kyc._id as any,
+        description: `KYC rejected. Reason: ${rejectionReason}`
+      });
+    }
 
     return sendResponse({
       res,
