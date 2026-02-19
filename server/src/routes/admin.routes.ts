@@ -1,14 +1,27 @@
 import { Router } from "express";
 import authMiddleware from "../middlewares/auth.middleware.js";
+import { reviewKyc, getAllKyc } from "../controllers/admin-kyc.controller.js";
+import { updateUserStatus, getUsers, getActionBidsByUserId, getAllBidsOfUser, getAllRatingsAndBadges } from "../controllers/admin-user.controller.js";
 import isAdmin from "../middlewares/admin.middleware.js";
-import { reviewKyc } from "../controllers/admin-kyc.controller.js";
-import { updateUserStatus, getUsers } from "../controllers/admin-user.controller.js";
 
 const router = Router();
 
-router.patch("/kyc/:userId", authMiddleware, isAdmin, reviewKyc);
-router.patch("/users/:userId/status", authMiddleware, isAdmin, updateUserStatus);
-router.get("/users", authMiddleware, isAdmin, getUsers);
+router.use(authMiddleware, isAdmin);
+
+// kyc routes
+router.patch("/kyc/:userId", reviewKyc);
+router.get("/kycs", getAllKyc);
+
+// user routes
+router.patch("/users/:userId/status", updateUserStatus);
+router.get("/users", getUsers);
+
+// bid routes
+router.get("/bids/:auctionId/:userId", getActionBidsByUserId);
+router.get("/bids/:userId", getAllBidsOfUser);
+
+// rating and badges
+router.get("/ratings-and-badges", getAllRatingsAndBadges);
 
 export default router;
 

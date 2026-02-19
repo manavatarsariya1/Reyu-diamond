@@ -309,6 +309,10 @@ export const updateBidStatusService = async (
     if (existingAcceptedBid && existingAcceptedBid._id.toString() !== bidId) {
       throw new Error("Another bid has already been accepted for this inventory");
     }
+
+    if (!bid.isHighestBid) {
+      throw new Error("Only the highest bid can be accepted for this auction");
+    }
   }
 
   if (isProduction) {

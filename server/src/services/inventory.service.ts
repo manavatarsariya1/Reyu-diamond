@@ -55,15 +55,50 @@ export const createInventoryService = async (
     return inventory;
 };
 
-export const getAllInventoriesService = async (): Promise<IInventory[]> => {
-    const inventories = await Inventory.find();
+export const getAllInventoriesService = async (filters: any = {}): Promise<IInventory[]> => {
+    const query: any = {};
+
+    if (filters.status) query.status = filters.status;
+
+    // Categorical filters (comma-separated support)
+    const categoricalFields = ['cut', 'color', 'clarity', 'shape', 'lab', 'location'];
+    categoricalFields.forEach(field => {
+        if (filters[field]) {
+            const values = filters[field].split(',').map((v: string) => v.trim());
+            if (values.length > 0) query[field] = { $in: values };
+        }
+    });
+
+    // Numerical range filters
+    if (filters.minPrice || filters.maxPrice) {
+        query.price = {};
+        if (filters.minPrice) query.price.$gte = Number(filters.minPrice);
+        if (filters.maxPrice) query.price.$lte = Number(filters.maxPrice);
+    }
+
+    if (filters.minCarat || filters.maxCarat) {
+        query.carat = {};
+        if (filters.minCarat) query.carat.$gte = Number(filters.minCarat);
+        if (filters.maxCarat) query.carat.$lte = Number(filters.maxCarat);
+    }
+
+    // Search by title or barcode (optional enhancement)
+    if (filters.search) {
+        query.$or = [
+            { title: { $regex: filters.search, $options: 'i' } },
+            { barcode: { $regex: filters.search, $options: 'i' } }
+        ];
+    }
+
+    const inventories = await Inventory.find(query).sort({ createdAt: -1 });
     return inventories;
 }
 
 export const updateInventoryService = async (
     inventoryId: string,
     userId: string,
-    updateData: any
+    updateData: any,
+    userRole?: string
 ) => {
     if (!mongoose.Types.ObjectId.isValid(inventoryId)) {
         throw {
@@ -79,7 +114,7 @@ export const updateInventoryService = async (
         };
     }
 
-    if (inv.sellerId.toString() !== userId) {
+    if (inv.sellerId.toString() !== userId && userRole !== "admin") {
         throw {
             statusCode: 403,
             message: "You are not authorized to update this inventory",
@@ -125,7 +160,8 @@ export const findInventoryById = async (inventoryId: string): Promise<IInventory
 
 export const deleteInventoryService = async (
     userId: string,
-    inventoryId: string
+    inventoryId: string,
+    userRole?: string
 ) => {
 
     if (!mongoose.Types.ObjectId.isValid(inventoryId)) {
@@ -142,7 +178,7 @@ export const deleteInventoryService = async (
         };
     }
 
-    if (inv.sellerId.toString() !== userId) {
+    if (inv.sellerId.toString() !== userId && userRole !== "admin") {
         throw {
             statusCode: 403,
             message: "You are not authorized to delete this inventory",

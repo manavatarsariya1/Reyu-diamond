@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
 import sendResponse from "../utils/api.response.js";
-import { reviewKycService } from "../services/kyc-admin.service.js";
+import { reviewKycService, getAllKycService } from "../services/kyc-admin.service.js";
 import { logService } from "../services/log.service.js";
+import { notifyUserKycStatus } from "../services/notification.service.js";
 
 export const reviewKyc = async (req: Request, res: Response) => {
   try {
@@ -62,6 +63,13 @@ export const reviewKyc = async (req: Request, res: Response) => {
       });
     }
 
+    // Notify user about KYC status update
+    // if (status === "approved" || status === "rejected") {
+    //   notifyUserKycStatus(userId, status, rejectionReason).catch((err: any) =>
+    //     console.error("Failed to send KYC status notification:", err)
+    //   );
+    // }
+
     return sendResponse({
       res,
       statusCode: 200,
@@ -74,6 +82,37 @@ export const reviewKyc = async (req: Request, res: Response) => {
       statusCode: error?.message === "KYC record not found" ? 404 : 500,
       success: false,
       message: error?.message || "Something went wrong",
+    });
+  }
+};
+
+export const getAllKyc = async (req: Request, res: Response) => {
+  try {
+    const { page, limit, status } = req.query;
+
+    const pageNum = page ? parseInt(page as string) : 1;
+    const limitNum = limit ? parseInt(limit as string) : 10;
+
+    const result = await getAllKycService({
+      page: pageNum,
+      limit: limitNum,
+      status: status as any,
+    });
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: "KYC records retrieved successfully",
+      data: result,
+    });
+  } catch (error: any) {
+    return sendResponse({
+      res,
+      statusCode: 500,
+      success: false,
+      message: "Failed to retrieve KYC records",
+      errors: error.message || "Something went wrong",
     });
   }
 };

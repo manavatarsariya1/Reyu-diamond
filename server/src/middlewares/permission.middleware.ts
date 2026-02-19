@@ -44,20 +44,6 @@ export const loadUserRole = async (
   }
 };
 
-export const requireRole =
-  (...roles: string[]) =>
-    (req: any, res: Response, next: NextFunction) => {
-      if (!req.userRole || !roles.includes(req.userRole)) {
-        return sendResponse({
-          res,
-          statusCode: 403,
-          success: false,
-          message: "Access denied",
-        });
-      }
-      next();
-    };
-
 export const ownerOrAdmin = (
   model: mongoose.Model<any>,
   ownerField: string,
@@ -93,10 +79,19 @@ export const ownerOrAdmin = (
         });
       }
 
-      const resource = await model
-        .findById(resourceId)
-        .select(ownerField)
-        .lean();
+      const isNested = ownerField.includes(".");
+      const populateField = isNested ? ownerField.split(".")[0] : undefined;
+      const finalOwnerField = isNested ? ownerField.split(".")[1] : ownerField;
+
+      let query = model.findById(resourceId);
+
+      if (isNested && populateField) {
+        query = query.populate(populateField);
+      } else {
+        query = query.select(ownerField);
+      }
+
+      const resource = await query.lean();
 
       if (!resource) {
         return sendResponse({
@@ -107,7 +102,14 @@ export const ownerOrAdmin = (
         });
       }
 
-      const ownerId = resource[ownerField];
+      let ownerId;
+      if (isNested && populateField) {
+        // @ts-ignore
+        ownerId = resource[populateField]?.[finalOwnerField];
+      } else {
+        ownerId = resource[ownerField];
+      }
+
       if (!ownerId) {
         return sendResponse({
           res,

@@ -7,6 +7,8 @@ import {
   getMyBidByInventoryService,
   updateBidStatusService,
 } from "../services/bid.service.js";
+import { createSystemDealService } from "../services/deal.service.js";
+import { notifyDealCreated, notifyAuctionOwnerNewBid } from "../services/notification.service.js";
 
 export const createBid = async (req: Request, res: Response) => {
   try {
@@ -50,6 +52,13 @@ export const createBid = async (req: Request, res: Response) => {
       buyerId,
       bidAmount,
     });
+
+    // Fire-and-forget: notify auction owner about new bid - notification
+    // notifyAuctionOwnerNewBid({
+    //   auctionId,
+    //   buyerName: (req as any).user?.username ?? "A buyer",
+    //   bidAmount,
+    // }).catch((err) => console.error("New bid notification failed:", err));
 
     return sendResponse({
       res,
@@ -278,6 +287,20 @@ export const updateBidStatus = async (req: Request, res: Response) => {
       role as "admin" | "user"
     );
 
+    // Auto-create deal and notify parties when bid is accepted
+    if (status === "ACCEPTED") {
+      try {
+        const deal = await createSystemDealService(bidId);
+        // Fire-and-forget notifications (don't block the response) - notification
+        // notifyDealCreated(deal).catch((err) =>
+        //   console.error("Deal notification failed:", err)
+        // );
+      } catch (dealError: any) {
+        // Log but don't fail the bid status update response
+        console.error("Auto deal creation failed after bid accept:", dealError?.message);
+      }
+    }
+
     return sendResponse({
       res,
       statusCode: 200,
@@ -328,6 +351,15 @@ export const updateBidStatus = async (req: Request, res: Response) => {
         statusCode: 400,
         success: false,
         message: "Another bid has already been accepted for this inventory",
+      });
+    }
+
+    if (error.message === "Only the highest bid can be accepted for this auction") {
+      return sendResponse({
+        res,
+        statusCode: 400,
+        success: false,
+        message: "Only the highest bid can be accepted for this auction",
       });
     }
 
