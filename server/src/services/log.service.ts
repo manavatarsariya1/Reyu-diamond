@@ -1,5 +1,6 @@
 import { AdminLog, type IAdminLog } from "../models/AdminLog.model.js";
 import { SystemLog, type ISystemLog } from "../models/SystemLog.model.js";
+import { notifyAdminsSystemLog } from "./notification.service.js";
 
 class LogService {
     /**
@@ -40,6 +41,12 @@ class LogService {
      */
     async createSystemLog(data: Partial<ISystemLog>): Promise<ISystemLog> {
         const log = await SystemLog.create(data);
+
+        // Fire-and-forget notification to admins for critical/error logs
+        // notifyAdminsSystemLog(log).catch((err) =>
+        //     console.error("Failed to send system log notification:", err)
+        // );
+
         return log;
     }
 

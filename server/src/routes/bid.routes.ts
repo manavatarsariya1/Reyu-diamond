@@ -7,7 +7,7 @@ import {
   updateBidStatus,
 } from "../controllers/bid.controller.js";
 import { kycVerifiedOnly } from "../middlewares/kyc.middleware.js";
-import { loadUserRole, ownerOrAdmin } from "../middlewares/permission.middleware.js";
+import { loadUserRole } from "../middlewares/permission.middleware.js";
 
 import { validate } from "../middlewares/validation.middleware.js";
 import { createBidSchema, updateBidStatusSchema } from "../validation/bid.validation.js";

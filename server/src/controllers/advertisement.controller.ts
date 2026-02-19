@@ -3,6 +3,8 @@ import * as advertisementService from "../services/advertisement.service.js"; //
 import { logService } from "../services/log.service.js";
 import { createAdvertisementSchema, updateAdvertisementStatusSchema, getAdvertisementsSchema } from "../validation/advertisement.validation.js";
 import sendResponse from "../utils/api.response.js";
+import User from "../models/User.model.js";
+import { notifyAdminsNewAdvertisement, notifyAdOwnerStatusUpdate } from "../services/notification.service.js";
 
 export const createAdvertisement = async (
     req: Request,
@@ -37,6 +39,14 @@ export const createAdvertisement = async (
             userId,
             validatedData.body,
             file
+        );
+
+        // Notify admins about new advertisement submission
+        const user = await User.findById(userId).select("username");
+        const advertiserName = user ? user.username : "A user";
+
+        notifyAdminsNewAdvertisement(advertisement._id?.toString() || "", advertiserName).catch((err) =>
+            console.error("Failed to send advertisement notification:", err)
         );
 
         return sendResponse({
@@ -139,6 +149,11 @@ export const updateAdvertisementStatus = async (
             rejectionReason
         );
 
+        // Notify ad owner about status update
+        // notifyAdOwnerStatusUpdate(advertisementId, status, rejectionReason).catch((err) =>
+        //     console.error("Failed to send advertisement status notification:", err)
+        // );
+
         let action: "AD_APPROVED" | "AD_REJECTED" | "AD_DISABLED" | null = null;
         let description = "";
 
@@ -147,7 +162,7 @@ export const updateAdvertisementStatus = async (
             description = "Advertisement approved";
         } else if (status === "REJECTED") {
             action = "AD_REJECTED";
-            description = `Advertisement rejected. Reason: ${rejectionReason}`;
+            description = `Advertisement rejected.Reason: ${rejectionReason} `;
         } else if (status === "DISABLED") {
             action = "AD_DISABLED";
             description = "Advertisement disabled";

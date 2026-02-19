@@ -5,19 +5,17 @@ import isAdmin from "../middlewares/admin.middleware.js";
 
 const router = Router();
 
+router.use(authMiddleware, isAdmin);
+
 // Get dashboard stats
 router.get(
     "/dashboard",
-    authMiddleware,
-    isAdmin,
     analyticsController.getDashboardStats
 );
 
 // Get revenue analytics
 router.get(
     "/revenue",
-    authMiddleware,
-    isAdmin,
     analyticsController.getRevenueAnalytics
 );
 

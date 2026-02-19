@@ -6,6 +6,11 @@ import Deal from "../models/Deal.model.js";
 import Escrow from "../models/Escrow.model.js";
 import sendResponse from "../utils/api.response.js";
 import stripe from "../utils/stripe.utility.js";
+import {
+    notifyPaymentInitiated,
+    notifyEscrowReleased,
+    notifyEscrowRefunded,
+} from "../services/notification.service.js";
 
 export const onboardUser = async (req: Request, res: Response) => {
     try {
@@ -83,6 +88,9 @@ export const initiatePayment = async (req: Request, res: Response) => {
             message: `Payment intent created for Deal ${deal._id}`,
             meta: { paymentIntentId }
         });
+
+        // Fire-and-forget: notify seller + admins 
+        // notifyPaymentInitiated(dealId).catch((e) => console.error("notifyPaymentInitiated:", e));
 
         return sendResponse({ res, statusCode: 200, success: true, message: "Payment initiated", data: { clientSecret, paymentIntentId } });
 
@@ -295,6 +303,9 @@ export const refundEscrow = async (req: Request, res: Response) => {
             });
         }
 
+        // Fire-and-forget: notify seller + buyer + admins
+        // notifyEscrowRefunded(dealId).catch((e) => console.error("notifyEscrowRefunded:", e));
+
         return sendResponse({ res, statusCode: 200, success: true, message: "Escrow refunded successfully", data: result });
     } catch (error: any) {
         console.error("Refund error:", error);
@@ -316,6 +327,9 @@ export const buyerConfirmDelivery = async (req: Request, res: Response) => {
             userId,
             notes
         );
+
+        // Fire-and-forget: notify seller + admins
+        // notifyEscrowReleased(dealId).catch((e) => console.error("notifyEscrowReleased:", e));
 
         return sendResponse({ res, statusCode: 200, success: true, message: "Buyer confirmed & escrow released", data: result });
     } catch (error: any) {

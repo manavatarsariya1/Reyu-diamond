@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import sendResponse from "../utils/api.response.js";
 import { createAuctionService, getAuctionsService, getAuctionByIdService, updateAuctionService, deleteAuctionService } from "../services/auction.service.js";
+import { notifyAllUsersNewAuction } from "../services/notification.service.js";
 
 interface AuthenticatedRequest extends Request {
   user?: any;
@@ -47,6 +48,10 @@ export const createAuction = async (req: AuthenticatedRequest, res: Response) =>
       userId: req.user.id,
       userRole: req.userRole || "",
     });
+
+    // Fire-and-forget: notify all users about the new auction - notification
+    // notifyAllUsersNewAuction((auction._id as any).toString()) 
+    //   .catch((err) => console.error("Auction notification failed:", err));
 
     return sendResponse({
       res,

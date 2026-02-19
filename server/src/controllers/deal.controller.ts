@@ -14,6 +14,11 @@ import { uploadBufferToCloudinary } from "../services/cloudinary.service.js";
 import { htmlToPdfBuffer } from "../services/pdf.service.js";
 import { getDealInvoiceHtml } from "../templates/deal-invoice.template.js";
 import User from "../models/User.model.js";
+import {
+  notifyDisputeRaised,
+  notifyDisputeResolved,
+  notifyDealCancelled,
+} from "../services/notification.service.js";
 
 export const dealCreation = async (req: Request, res: Response) => {
   try {
@@ -178,6 +183,8 @@ export const getAllBids = async (req: Request, res: Response) => {
     const userId = (req as any).user?.id as string | undefined;
     const role = (req as any).userRole as "admin" | "user" | undefined;
 
+    const { search, userId: targetUserId, status, page, limit } = req.query;
+
     if (!userId || !role) {
       return sendResponse({
         res,
@@ -187,14 +194,21 @@ export const getAllBids = async (req: Request, res: Response) => {
       });
     }
 
-    const deals = await getallDealsService(userId as string, role as "admin" | "user");
+    const pageNum = page ? parseInt(page as string) : 1;
+    const limitNum = limit ? parseInt(limit as string) : 10;
+
+    const result = await getallDealsService(
+      userId as string,
+      role as "admin" | "user",
+      { search, userId: targetUserId, status, page: pageNum, limit: limitNum }
+    );
 
     return sendResponse({
       res,
       statusCode: 200,
       success: true,
       message: "Deals fetched successfully",
-      data: deals,
+      data: result,
     });
   } catch (error: any) {
     const msg = error?.message as string | undefined;
@@ -433,6 +447,11 @@ export const cancelDeal = async (req: any, res: Response) => {
       user.role
     );
 
+    // Notify buyer and seller
+    // notifyDealCancelled(req.params.dealId).catch((err) =>
+    //   console.error("Failed to send deal cancellation notification:", err)
+    // );
+
     return sendResponse({
       res,
       statusCode: 200,
@@ -477,6 +496,11 @@ export const raiseDispute = async (req: any, res: Response) => {
       user.id,
       user.role
     );
+
+    // Notify buyer, seller, and admins
+    // notifyDisputeRaised(req.params.dealId, reason).catch((err) =>
+    //   console.error("Failed to send dispute raised notification:", err)
+    // );
 
     return sendResponse({
       res,
@@ -535,6 +559,11 @@ export const resolveDispute = async (req: any, res: Response) => {
       user.id,
       user.role
     );
+
+    // Notify buyer and seller
+    // notifyDisputeResolved(req.params.dealId, resolution).catch((err) =>
+    //   console.error("Failed to send dispute resolution notification:", err)
+    // );
 
     return sendResponse({
       res,

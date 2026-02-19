@@ -4,7 +4,7 @@ import { createInventoryService, getAllInventoriesService, updateInventoryServic
 import { generateUniqueBarcode } from "../utils/barcode.util.js";
 import { uploadToCloudinary } from "../services/cloudinary.service.js";
 import mongoose from "mongoose";
-import { getUserById } from "../services/auth.service.js";
+import { checkAndNotifyRequirements } from "../services/notification.service.js";
 
 export const createInventory = async (req: Request, res: Response) => {
   try {
@@ -38,6 +38,11 @@ export const createInventory = async (req: Request, res: Response) => {
       videoUrl
     );
 
+    // Check for matching requirements and notify users - nofification
+    // checkAndNotifyRequirements(inventory).catch((err: any) =>
+    //   console.error("Error in checkAndNotifyRequirements background task:", err)
+    // );
+
     return sendResponse({
       res,
       statusCode: 201,
@@ -59,13 +64,14 @@ export const createInventory = async (req: Request, res: Response) => {
 
 export const getAllInventories = async (req: Request, res: Response) => {
   try {
-    const requirements = await getAllInventoriesService();
+    const filters = req.query;
+    const requirements = await getAllInventoriesService(filters);
     return sendResponse({
       res,
       statusCode: 200,
       success: true,
       data: requirements,
-      message: "All Requirements fetched successfully",
+      message: "All Inventories fetched successfully",
     });
   } catch (error) {
     return sendResponse({
@@ -131,6 +137,7 @@ export const updateInventory = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = (req as any).user.id;
+    const userRole = (req as any).userRole;
 
     if (!id || typeof id !== "string") {
       return sendResponse({
@@ -144,7 +151,8 @@ export const updateInventory = async (req: Request, res: Response) => {
     const updatedItem = await updateInventoryService(
       id,
       userId,
-      req.body
+      req.body,
+      userRole
     );
 
     if (!updatedItem) {
@@ -178,6 +186,7 @@ export const deleteInventory = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = (req as any).user.id;
+    const userRole = (req as any).userRole;
     if (!id || typeof id !== "string") {
       return sendResponse({
         res,
@@ -186,7 +195,7 @@ export const deleteInventory = async (req: Request, res: Response) => {
         message: "Inventory ID is required",
       });
     }
-    const deletedInventory = await deleteInventoryService(userId, id);
+    const deletedInventory = await deleteInventoryService(userId, id, userRole);
 
     return sendResponse({
       res,

@@ -135,22 +135,48 @@ export const getDealByIdService = async (
 
 export const getallDealsService = async (
   userId: string,
-  userRole: "admin" | "user"
-) => {
+  userRole: "admin" | "user",
+  query: any = {}
+): Promise<{ deals: any[]; total: number; pages: number }> => {
   const isAdmin = userRole === "admin";
+  const { search, userId: targetUserId, status, page = 1, limit = 10 } = query;
   const uid = new mongoose.Types.ObjectId(userId);
+  const skip = (page - 1) * limit;
+
+  const filter: any = {};
 
   if (isAdmin) {
-    return await Deal.find({}).populate(dealListPopulate).sort({ createdAt: -1 });
+    if (targetUserId && mongoose.Types.ObjectId.isValid(targetUserId)) {
+      const target = new mongoose.Types.ObjectId(targetUserId);
+      filter.$or = [{ buyerId: target }, { sellerId: target }];
+    }
+  } else {
+    filter.$or = [{ buyerId: uid }, { sellerId: uid }];
   }
 
-  const deals = await Deal.find({
-    $or: [{ buyerId: uid }, { sellerId: uid }],
-  })
-    .populate(dealListPopulate)
-    .sort({ createdAt: -1 });
+  if (search) {
+    if (mongoose.Types.ObjectId.isValid(search)) {
+      filter._id = new mongoose.Types.ObjectId(search);
+    }
+  }
 
-  return deals;
+  if (status) {
+    filter.status = status;
+  }
+
+  const deals = await Deal.find(filter)
+    .populate(dealListPopulate)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  const total = await Deal.countDocuments(filter);
+
+  return {
+    deals,
+    total,
+    pages: Math.ceil(total / limit),
+  };
 };
 
 const DEAL_TRANSITIONS: Record<DealStatus, DealStatus[]> = {
