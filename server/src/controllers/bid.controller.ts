@@ -16,6 +16,7 @@ export const createBid = async (req: Request, res: Response) => {
       ? req.params.auctionId[0]
       : req.params.auctionId;
     const { bidAmount } = req.body;
+    const role = (req as any).userRole as string | undefined;
 
     // from protect middleware
     const buyerId = (req as any).user?.id as string | undefined;
@@ -51,14 +52,15 @@ export const createBid = async (req: Request, res: Response) => {
       auctionId,
       buyerId,
       bidAmount,
+      role
     });
 
     // Fire-and-forget: notify auction owner about new bid - notification
-    // notifyAuctionOwnerNewBid({
-    //   auctionId,
-    //   buyerName: (req as any).user?.username ?? "A buyer",
-    //   bidAmount,
-    // }).catch((err) => console.error("New bid notification failed:", err));
+    notifyAuctionOwnerNewBid({
+      auctionId,
+      buyerName: (req as any).user?.username ?? "A buyer",
+      bidAmount,
+    }).catch((err) => console.error("New bid notification failed:", err));
 
     return sendResponse({
       res,
@@ -138,16 +140,7 @@ export const getAllBid = async (req: Request, res: Response) => {
       });
     }
 
-    if (!userId) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    const bids = await getAllBidsByAuctionService(auctionId, userId, role);
+    const bids = await getAllBidsByAuctionService(auctionId, userId as string, role);
 
     return sendResponse({
       res,
@@ -271,15 +264,6 @@ export const updateBidStatus = async (req: Request, res: Response) => {
       });
     }
 
-    if (!userId || !role) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
     const updatedBid = await updateBidStatusService(
       bidId,
       status as "ACCEPTED" | "REJECTED" | "EXPIRED",
@@ -292,9 +276,17 @@ export const updateBidStatus = async (req: Request, res: Response) => {
       try {
         const deal = await createSystemDealService(bidId);
         // Fire-and-forget notifications (don't block the response) - notification
-        // notifyDealCreated(deal).catch((err) =>
-        //   console.error("Deal notification failed:", err)
-        // );
+        notifyDealCreated(deal).catch((err) =>
+          console.error("Deal notification failed:", err)
+        );
+        
+        return sendResponse({
+          res,
+          statusCode: 200,
+          success: true,
+          message: `Bid ${status.toLowerCase()} successfully`,
+          data: {bidId, status, deal},
+        });
       } catch (dealError: any) {
         // Log but don't fail the bid status update response
         console.error("Auto deal creation failed after bid accept:", dealError?.message);

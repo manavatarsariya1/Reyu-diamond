@@ -429,28 +429,18 @@ export const downloadPDF = async (req: Request, res: Response) => {
 export const cancelDeal = async (req: any, res: Response) => {
   try {
     const userId = (req as any).user.id;
+    const role = (req as any).userRole;
 
-    const user = await User.findById(userId);
-    console.log("User for cancel deal:", user);
-
-    if (!user) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Unauthorized",
-      });
-    }
     const result = await cancelDealService(
       req.params.dealId,
-      user.id,
-      user.role
+      userId,
+      role
     );
 
     // Notify buyer and seller
-    // notifyDealCancelled(req.params.dealId).catch((err) =>
-    //   console.error("Failed to send deal cancellation notification:", err)
-    // );
+    notifyDealCancelled(req.params.dealId).catch((err) =>
+      console.error("Failed to send deal cancellation notification:", err)
+    );
 
     return sendResponse({
       res,
@@ -473,17 +463,8 @@ export const cancelDeal = async (req: any, res: Response) => {
 export const raiseDispute = async (req: any, res: Response) => {
   try {
     const userId = (req as any).user.id;
+    const role = (req as any).userRole;
 
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "User not found",
-      });
-    }
     const { reason } = req.body;
 
     if (!reason) {
@@ -493,14 +474,14 @@ export const raiseDispute = async (req: any, res: Response) => {
     const deal = await raiseDisputeService(
       req.params.dealId,
       reason,
-      user.id,
-      user.role
+      userId,
+      role
     );
 
     // Notify buyer, seller, and admins
-    // notifyDisputeRaised(req.params.dealId, reason).catch((err) =>
-    //   console.error("Failed to send dispute raised notification:", err)
-    // );
+    notifyDisputeRaised(req.params.dealId, reason).catch((err) =>
+      console.error("Failed to send dispute raised notification:", err)
+    );
 
     return sendResponse({
       res,
@@ -523,17 +504,8 @@ export const raiseDispute = async (req: any, res: Response) => {
 export const resolveDispute = async (req: any, res: Response) => {
   try {
     const userId = (req as any).user.id;
+    const role = (req as any).userRole;
 
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "User not found",
-      });
-    }
     const { resolution: rawResolution, adminNote } = req.body;
 
     if (!rawResolution) {
@@ -556,14 +528,14 @@ export const resolveDispute = async (req: any, res: Response) => {
       req.params.dealId,
       resolution,
       adminNote || "",
-      user.id,
-      user.role
+      userId,
+      role
     );
 
     // Notify buyer and seller
-    // notifyDisputeResolved(req.params.dealId, resolution).catch((err) =>
-    //   console.error("Failed to send dispute resolution notification:", err)
-    // );
+    notifyDisputeResolved(req.params.dealId, resolution).catch((err) =>
+      console.error("Failed to send dispute resolution notification:", err)
+    );
 
     return sendResponse({
       res,

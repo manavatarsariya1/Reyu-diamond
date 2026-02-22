@@ -1,12 +1,12 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IAuction extends Document {
+  recipient: mongoose.Types.ObjectId;
   inventoryId: mongoose.Types.ObjectId;
-
+  
   basePrice: number;
-  currentBid: number;
+  highestBidPrice: number;
 
-  isHighestBid: boolean;
   highestBidderId?: mongoose.Types.ObjectId;
 
   bidIds: mongoose.Types.ObjectId[];
@@ -23,6 +23,12 @@ export interface IAuction extends Document {
 
 const AuctionSchema: Schema<IAuction> = new Schema(
   {
+    recipient: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     inventoryId: {
       type: Schema.Types.ObjectId,
       ref: "Inventory",
@@ -36,7 +42,7 @@ const AuctionSchema: Schema<IAuction> = new Schema(
       min: 0
     },
 
-    currentBid: {
+    highestBidPrice: {
       type: Number,
       required: true,
       min: 0,

@@ -90,7 +90,7 @@ export const initiatePayment = async (req: Request, res: Response) => {
         });
 
         // Fire-and-forget: notify seller + admins 
-        // notifyPaymentInitiated(dealId).catch((e) => console.error("notifyPaymentInitiated:", e));
+        notifyPaymentInitiated(dealId).catch((e) => console.error("notifyPaymentInitiated:", e));
 
         return sendResponse({ res, statusCode: 200, success: true, message: "Payment initiated", data: { clientSecret, paymentIntentId } });
 
@@ -304,7 +304,7 @@ export const refundEscrow = async (req: Request, res: Response) => {
         }
 
         // Fire-and-forget: notify seller + buyer + admins
-        // notifyEscrowRefunded(dealId).catch((e) => console.error("notifyEscrowRefunded:", e));
+        notifyEscrowRefunded(dealId).catch((e) => console.error("notifyEscrowRefunded:", e));
 
         return sendResponse({ res, statusCode: 200, success: true, message: "Escrow refunded successfully", data: result });
     } catch (error: any) {
@@ -329,7 +329,7 @@ export const buyerConfirmDelivery = async (req: Request, res: Response) => {
         );
 
         // Fire-and-forget: notify seller + admins
-        // notifyEscrowReleased(dealId).catch((e) => console.error("notifyEscrowReleased:", e));
+        notifyEscrowReleased(dealId).catch((e) => console.error("notifyEscrowReleased:", e));
 
         return sendResponse({ res, statusCode: 200, success: true, message: "Buyer confirmed & escrow released", data: result });
     } catch (error: any) {

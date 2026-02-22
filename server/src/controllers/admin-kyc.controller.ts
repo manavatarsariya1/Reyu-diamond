@@ -64,11 +64,11 @@ export const reviewKyc = async (req: Request, res: Response) => {
     }
 
     // Notify user about KYC status update
-    // if (status === "approved" || status === "rejected") {
-    //   notifyUserKycStatus(userId, status, rejectionReason).catch((err: any) =>
-    //     console.error("Failed to send KYC status notification:", err)
-    //   );
-    // }
+    if (status === "approved" || status === "rejected") {
+      notifyUserKycStatus(userId, status, rejectionReason).catch((err: any) =>
+        console.error("Failed to send KYC status notification:", err)
+      );
+    }
 
     return sendResponse({
       res,

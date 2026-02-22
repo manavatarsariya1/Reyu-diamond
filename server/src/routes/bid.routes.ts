@@ -14,11 +14,11 @@ import { createBidSchema, updateBidStatusSchema } from "../validation/bid.valida
 
 const router = Router();
 
-router.use(protect, kycVerifiedOnly);
+router.use(protect, kycVerifiedOnly, loadUserRole);
 
 router.post("/:auctionId", validate(createBidSchema), createBid);
-router.get("/:auctionId", loadUserRole, getAllBid);
+router.get("/:auctionId", getAllBid);
 router.get("/:auctionId/my-bid", getSellerBid);
-router.patch("/:bidId/status", loadUserRole, validate(updateBidStatusSchema), updateBidStatus);
+router.patch("/:bidId/status", validate(updateBidStatusSchema), updateBidStatus);
 
 export default router;

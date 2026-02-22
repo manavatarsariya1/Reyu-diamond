@@ -150,9 +150,9 @@ export const updateAdvertisementStatus = async (
         );
 
         // Notify ad owner about status update
-        // notifyAdOwnerStatusUpdate(advertisementId, status, rejectionReason).catch((err) =>
-        //     console.error("Failed to send advertisement status notification:", err)
-        // );
+        notifyAdOwnerStatusUpdate(advertisementId, status, rejectionReason).catch((err) =>
+            console.error("Failed to send advertisement status notification:", err)
+        );
 
         let action: "AD_APPROVED" | "AD_REJECTED" | "AD_DISABLED" | null = null;
         let description = "";

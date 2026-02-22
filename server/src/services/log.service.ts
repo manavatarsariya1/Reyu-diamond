@@ -43,9 +43,9 @@ class LogService {
         const log = await SystemLog.create(data);
 
         // Fire-and-forget notification to admins for critical/error logs
-        // notifyAdminsSystemLog(log).catch((err) =>
-        //     console.error("Failed to send system log notification:", err)
-        // );
+        notifyAdminsSystemLog(log).catch((err) =>
+            console.error("Failed to send system log notification:", err)
+        );
 
         return log;
     }

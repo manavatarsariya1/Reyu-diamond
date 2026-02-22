@@ -8,8 +8,7 @@ interface CreateAuctionInput {
     basePrice: number;
     startDate: Date;
     endDate: Date;
-    userId: string;
-    userRole: string;
+    recipientId?: string;
 }
 
 export const createAuctionService = async ({
@@ -17,8 +16,7 @@ export const createAuctionService = async ({
     basePrice,
     startDate,
     endDate,
-    userId,
-    userRole,
+    recipientId
 }: CreateAuctionInput): Promise<IAuction> => {
     const useTransaction = process.env.NODE_ENV === "production";
     const session = useTransaction ? await mongoose.startSession() : null;
@@ -29,18 +27,16 @@ export const createAuctionService = async ({
 
     try {
         const inventory = await Inventory.findById(inventoryId).session(session);
+        const inAuction = await Auction.findOne({ inventoryId }).session(session);
 
         if (!inventory) {
             throw new Error("Inventory not found");
         }
 
-        // 🔐 Authorization: owner or admin
-        const isOwner = inventory.sellerId.toString() === userId;
-        const isAdmin = userRole === "admin";
-
-        if (!isOwner && !isAdmin) {
-            throw new Error("You are not allowed to list this inventory in Auction");
+        if (inAuction) {
+            throw new Error("Inventory is already in auction");
         }
+
         // 🚫 Only AVAILABLE inventory can be listed
         if (inventory.status !== "AVAILABLE") {
             throw new Error("Inventory must be AVAILABLE to create auction");
@@ -52,13 +48,12 @@ export const createAuctionService = async ({
         // Create auction
         const auction = await Auction.create(
             [
-                {
+                {   recipient: recipientId || inventory.sellerId,
                     inventoryId: inventory._id,
                     basePrice,
-                    currentBid: basePrice,
+                    highestBidPrice: basePrice,
                     startDate,
                     endDate,
-                    isHighestBid: false,
                     bidIds: [],
                 },
             ],
@@ -106,24 +101,14 @@ export const getAuctionByIdService = async (auctionId: string): Promise<IAuction
 export const updateAuctionService = async (
     auctionId: string,
     updates: Partial<IAuction>,
-    userId: string,
-    userRole: string
 ): Promise<IAuction> => {
     const auction = await Auction.findById(auctionId).populate("inventoryId");
 
     if (!auction) {
-    throw new Error("Auction not found or You are not allowed to update this auctionbid");
+        throw new Error("Auction not found or You are not allowed to update this auctionbid");
     }
 
     const inventory = auction.inventoryId as any; // Cast to any or appropriate Inventory interface if available here
-
-    // 🔐 Authorization: owner or admin
-    const isOwner = inventory.sellerId.toString() === userId;
-    const isAdmin = userRole === "admin";
-
-    if (!isOwner && !isAdmin) {
-        throw new Error("You are not allowed to update this auction");
-    }
 
     // Apply allowed updates
     if (auction.bidIds && auction.bidIds.length > 0) {
