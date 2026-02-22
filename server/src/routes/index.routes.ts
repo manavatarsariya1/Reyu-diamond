@@ -13,6 +13,7 @@ import ratingRoutes from "./rating.routes.js";
 import advertisementRoutes from "./advertisement.routes.js";
 import logRoutes from "./log.routes.js";
 import analyticsRoutes from "./analytics.routes.js";
+import notificationRoutes from "./notification.routes.js";
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use("/chat", chatRoutes);
 router.use("/advertisements", advertisementRoutes);
 router.use("/logs", logRoutes);
 router.use("/analytics", analyticsRoutes);
+router.use("/notifications", notificationRoutes);
 
 export default router;

@@ -39,9 +39,9 @@ export const createInventory = async (req: Request, res: Response) => {
     );
 
     // Check for matching requirements and notify users - nofification
-    // checkAndNotifyRequirements(inventory).catch((err: any) =>
-    //   console.error("Error in checkAndNotifyRequirements background task:", err)
-    // );
+    checkAndNotifyRequirements(inventory).catch((err: any) =>
+      console.error("Error in checkAndNotifyRequirements background task:", err)
+    );
 
     return sendResponse({
       res,

@@ -31,27 +31,17 @@ export const createAuction = async (req: AuthenticatedRequest, res: Response) =>
       });
     }
 
-    if (!req.user || !req.user.id) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
     const auction = await createAuctionService({
       inventoryId,
       basePrice,
       startDate,
       endDate,
-      userId: req.user.id,
-      userRole: req.userRole || "",
+      recipientId: req.user.id
     });
 
     // Fire-and-forget: notify all users about the new auction - notification
-    // notifyAllUsersNewAuction((auction._id as any).toString()) 
-    //   .catch((err) => console.error("Auction notification failed:", err));
+    notifyAllUsersNewAuction((auction._id as any).toString()) 
+      .catch((err) => console.error("Auction notification failed:", err));
 
     return sendResponse({
       res,
@@ -138,20 +128,9 @@ export const updateAuction = async (req: AuthenticatedRequest, res: Response) =>
       });
     }
 
-    if (!req.user || !req.user.id) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
     const auction = await updateAuctionService(
       auctionId,
       updates,
-      req.user.id,
-      req.userRole || ""
     );
 
     return sendResponse({

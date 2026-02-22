@@ -124,7 +124,7 @@ export const ownerOrAdmin = (
           res,
           statusCode: 403,
           success: false,
-          message: "You are not allowed to access this resource",
+          message: "You are not Authorized to access this resource",
         });
       }
 

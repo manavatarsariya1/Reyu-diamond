@@ -7,48 +7,21 @@ import type { IInventory } from "../models/Inventory.model.js";
 import Requirement from "../models/requirement.model.js";
 import { Advertisement } from "../models/Advertisement.model.js";
 import type { ISystemLog } from "../models/SystemLog.model.js";
+import Deal from "../models/Deal.model.js";
+import Notification from "../models/Notification.model.js";
 
 export const notifyAdminsForKyc = async (userId: string) => {
-  const admins = await User.find({
-    role: "admin",
-    fcmToken: { $ne: null }
-  });
+  const notification = {
+    title: "New KYC Submission",
+    body: `User with ID ${userId} submitted KYC.`,
+  };
+  const data = {
+    type: "KYC_PENDING",
+    userId
+  };
 
-  for (const admin of admins) {
-    try {
-      if (!admin.fcmToken) continue;
-      console.log(`Sending KYC notification to admin ${admin._id} with token ${admin.fcmToken}`);
-      await fcm.send({
-        token: admin.fcmToken,
-        notification: {
-          title: "New KYC Submission",
-          body: `User with ID ${userId} submitted KYC.`,
-        },
-        data: {
-          type: "KYC_PENDING",
-          userId
-        }
-      });
-
-      console.log(`Notification sent to admin ${admin._id}`);
-    } catch (error: any) {
-
-      console.log("FCM Error:", error.message);
-
-      // Remove invalid tokens or mismatched sender ID
-      if (
-        error.code === "messaging/registration-token-not-registered" ||
-        error.message.includes("SenderId mismatch") ||
-        error.code === "messaging/mismatched-credential"
-      ) {
-        console.log(`Removing invalid token for admin ${admin._id}`);
-        await User.updateOne(
-          { _id: admin._id },
-          { $unset: { fcmToken: "" } }
-        );
-      }
-    }
-  }
+  await sendFcmToAdmins(notification, data);
+  await saveNotificationToAdmins(notification, data);
 };
 
 export const notifyAuctionOwnerNewBid = async ({
@@ -61,7 +34,6 @@ export const notifyAuctionOwnerNewBid = async ({
   bidAmount: number;
 }) => {
   try {
-    // Resolve auction owner from auctionId → inventory.sellerId
     const auction = await Auction.findById(auctionId).select("inventoryId");
     if (!auction) return;
 
@@ -69,38 +41,22 @@ export const notifyAuctionOwnerNewBid = async ({
     if (!inventory) return;
 
     const ownerId = inventory.sellerId.toString();
-    const owner = await User.findById(ownerId).select("fcmToken");
-    if (!owner?.fcmToken) return;
+    const notification = {
+      title: "New Bid Received!",
+      body: `${buyerName} placed a bid of ₹${bidAmount} on your auction.`,
+    };
+    const data = {
+      type: "NEW_BID",
+      auctionId,
+      bidAmount: String(bidAmount),
+    };
 
-    await fcm.send({
-      token: owner.fcmToken,
-      notification: {
-        title: "New Bid Received!",
-        body: `${buyerName} placed a bid of ₹${bidAmount} on your auction.`,
-      },
-      data: {
-        type: "NEW_BID",
-        auctionId,
-        bidAmount: String(bidAmount),
-      },
-    });
+    await sendFcmToUser(ownerId, notification, data);
+    await saveNotification(ownerId, notification, data);
+
     console.log(`New bid notification sent to auction owner ${ownerId}`);
   } catch (error: any) {
-    console.error("FCM Error (New Bid):", error.message);
-    if (
-      error.code === "messaging/registration-token-not-registered" ||
-      error.message?.includes("SenderId mismatch") ||
-      error.code === "messaging/mismatched-credential"
-    ) {
-      // Re-lookup owner to clear token
-      const auc = await Auction.findById(auctionId).select("inventoryId");
-      if (auc) {
-        const inv = await Inventory.findById(auc.inventoryId).select("sellerId");
-        if (inv) {
-          await User.updateOne({ _id: inv.sellerId }, { $unset: { fcmToken: "" } });
-        }
-      }
-    }
+    console.error("Error in notifyAuctionOwnerNewBid:", error.message);
   }
 };
 
@@ -109,42 +65,22 @@ export const notifyDealCreated = async (deal: IDeal) => {
   const buyerId = deal.buyerId.toString();
   const dealId = deal._id.toString();
 
-  const users = await User.find({
-    _id: { $in: [sellerId, buyerId] },
-    fcmToken: { $ne: null },
-  });
+  const users = [
+    { id: sellerId, title: "Deal Created", body: `A deal has been created for your bid (Deal ID: ${dealId}). Awaiting payment from buyer.` },
+    { id: buyerId, title: "Deal Created", body: `Your bid was accepted! A deal has been created (Deal ID: ${dealId}).` }
+  ];
 
-  for (const user of users) {
-    if (!user.fcmToken) continue;
-    const isSeller = user._id.toString() === sellerId;
-    const title = "Deal Created";
-    const body = isSeller
-      ? `A deal has been created for your bid (Deal ID: ${dealId}). Awaiting payment from buyer.`
-      : `Your bid was accepted! A deal has been created (Deal ID: ${dealId}).`;
+  for (const item of users) {
+    const notification = { title: item.title, body: item.body };
+    const data = { type: "DEAL_CREATED", dealId };
 
-    try {
-      await fcm.send({
-        token: user.fcmToken,
-        notification: { title, body },
-        data: { type: "DEAL_CREATED", dealId },
-      });
-      console.log(`Deal created notification sent to user ${user._id}`);
-    } catch (error: any) {
-      console.log("FCM Error (Deal Created):", error.message);
-      if (
-        error.code === "messaging/registration-token-not-registered" ||
-        error.message?.includes("SenderId mismatch") ||
-        error.code === "messaging/mismatched-credential"
-      ) {
-        await User.updateOne({ _id: user._id }, { $unset: { fcmToken: "" } });
-      }
-    }
+    await sendFcmToUser(item.id, notification, data);
+    await saveNotification(item.id, notification, data);
   }
 };
 
 export const notifyAllUsersNewAuction = async (auctionId: string) => {
   try {
-    // Populate inventory details from auction
     const auction = await Auction.findById(auctionId).populate("inventoryId");
     if (!auction) return;
 
@@ -176,33 +112,15 @@ export const notifyAllUsersNewAuction = async (auctionId: string) => {
       location,
     };
 
-    // Fetch all users with valid FCM tokens (excluding auction owner)
     const ownerId = inv?.sellerId?.toString();
     const users = await User.find({
-      fcmToken: { $ne: null },
       ...(ownerId ? { _id: { $ne: ownerId } } : {}),
-    }).select("_id fcmToken");
-
-    console.log(`Sending new auction notification to ${users.length} users`);
+    }).select("_id");
 
     for (const user of users) {
-      if (!user.fcmToken) continue;
-      try {
-        await fcm.send({
-          token: user.fcmToken,
-          notification: { title, body },
-          data,
-        });
-      } catch (error: any) {
-        console.error(`FCM Error (New Auction) for user ${user._id}:`, error.message);
-        if (
-          error.code === "messaging/registration-token-not-registered" ||
-          error.message?.includes("SenderId mismatch") ||
-          error.code === "messaging/mismatched-credential"
-        ) {
-          await User.updateOne({ _id: user._id }, { $unset: { fcmToken: "" } });
-        }
-      }
+      const userId = user._id.toString();
+      await sendFcmToUser(userId, { title, body }, data);
+      await saveNotification(userId, { title, body }, data);
     }
   } catch (error: any) {
     console.error("Error in notifyAllUsersNewAuction:", error.message);
@@ -215,50 +133,49 @@ export const checkAndNotifyRequirements = async (inventory: IInventory) => {
       shape: inventory.shape,
       color: inventory.color,
       clarity: inventory.clarity,
-      carat: { $lte: inventory.carat }, // Requirement carat <= Inventory carat (Inventory is big enough)
-      budget: { $gte: inventory.price } // Requirement budget >= Inventory price (Affordable)
-    }).populate("userId", "fcmToken");
-
-    console.log(`Found ${matchingRequirements.length} matching requirements for inventory ${inventory.barcode}`);
+      carat: { $lte: inventory.carat },
+      budget: { $gte: inventory.price }
+    }).select("userId");
 
     for (const req of matchingRequirements) {
-      const user = req.userId as any; // Populated
+      const userId = req.userId.toString();
+      const notification = {
+        title: "New Inventory Match!",
+        body: `A new diamond matches your requirement: ${inventory.shape} ${inventory.carat}ct ${inventory.color} ${inventory.clarity}`,
+      };
+      const data = {
+        type: "INVENTORY_MATCH",
+        inventoryId: inventory._id.toString(),
+        requirementId: req._id.toString()
+      };
 
-      if (user && user.fcmToken) {
-        try {
-          console.log(`Sending inventory match notification to user ${user._id}`);
-          await fcm.send({
-            token: user.fcmToken,
-            notification: {
-              title: "New Inventory Match!",
-              body: `A new diamond matches your requirement: ${inventory.shape} ${inventory.carat}ct ${inventory.color} ${inventory.clarity}`,
-            },
-            data: {
-              type: "INVENTORY_MATCH",
-              inventoryId: inventory._id.toString(),
-              requirementId: req._id.toString()
-            }
-          });
-        } catch (error: any) {
-          console.log("FCM Error (Inventory Match):", error.message);
-          // Handle invalid tokens if needed, similar to notifyAdminsForKyc
-          if (
-            error.code === "messaging/registration-token-not-registered" ||
-            error.message.includes("SenderId mismatch") ||
-            error.code === "messaging/mismatched-credential"
-          ) {
-            console.log(`Removing invalid token for user ${user._id}`);
-            await User.updateOne(
-              { _id: user._id },
-              { $unset: { fcmToken: "" } }
-            );
-          }
-        }
-      }
+      await sendFcmToUser(userId, notification, data);
+      await saveNotification(userId, notification, data);
     }
-
   } catch (error: any) {
     console.error("Error in checkAndNotifyRequirements:", error);
+  }
+};
+
+// ─── Helper: save notification to DB ──────────────────────────────────────────
+const saveNotification = async (
+  recipientId: string,
+  notification: { title: string; body: string },
+  data: Record<string, string>,
+  senderId?: string
+) => {
+  try {
+    const notificationObj: any = {
+      recipient: recipientId,
+      title: notification.title,
+      body: notification.body,
+      data,
+      type: data.type || "GENERAL",
+    };
+    if (senderId) notificationObj.sender = senderId;
+    await Notification.create(notificationObj);
+  } catch (error) {
+    console.error("Error saving notification to DB:", error);
   }
 };
 
@@ -282,6 +199,22 @@ const sendFcmToUser = async (
     ) {
       await User.updateOne({ _id: userId }, { $unset: { fcmToken: "" } });
     }
+  }
+};
+
+// ─── Helper: save notification to all admins ──────────────────────────────────
+const saveNotificationToAdmins = async (
+  notification: { title: string; body: string },
+  data: Record<string, string>,
+  senderId?: string
+) => {
+  try {
+    const admins = await User.find({ role: "admin" }).select("_id");
+    for (const admin of admins) {
+      await saveNotification(admin._id.toString(), notification, data, senderId);
+    }
+  } catch (error) {
+    console.error("Error saving notification to admins:", error);
   }
 };
 
@@ -310,8 +243,6 @@ const sendFcmToAdmins = async (
 
 // ─── Stripe Notifications ─────────────────────────────────────────────────────
 
-import Deal from "../models/Deal.model.js";
-
 /**
  * /payment-intent — buyer initiated payment.
  * Notify: seller + all admins.
@@ -324,22 +255,21 @@ export const notifyPaymentInitiated = async (dealId: string) => {
     const sellerId = deal.sellerId.toString();
     const data: Record<string, string> = { type: "PAYMENT_INITIATED", dealId };
 
-    await sendFcmToUser(
-      sellerId,
-      {
-        title: "💳 Payment Initiated",
-        body: `Buyer has initiated payment of ₹${deal.agreedAmount} for Deal #${dealId}. Funds will be held in escrow.`,
-      },
-      data
-    );
+    const notification = {
+      title: "💳 Payment Initiated",
+      body: `Buyer has initiated payment of ₹${deal.agreedAmount} for Deal #${dealId}. Funds will be held in escrow.`,
+    };
 
-    await sendFcmToAdmins(
-      {
-        title: "💳 Payment Initiated",
-        body: `Payment of ₹${deal.agreedAmount} initiated for Deal #${dealId}.`,
-      },
-      data
-    );
+    await sendFcmToUser(sellerId, notification, data);
+    await saveNotification(sellerId, notification, data);
+
+    const adminNotification = {
+      title: "💳 Payment Initiated",
+      body: `Payment of ₹${deal.agreedAmount} initiated for Deal #${dealId}.`,
+    };
+
+    await sendFcmToAdmins(adminNotification, data);
+    await saveNotificationToAdmins(adminNotification, data);
   } catch (err: any) {
     console.error("notifyPaymentInitiated error:", err.message);
   }
@@ -357,22 +287,21 @@ export const notifyEscrowReleased = async (dealId: string) => {
     const sellerId = deal.sellerId.toString();
     const data: Record<string, string> = { type: "ESCROW_RELEASED", dealId };
 
-    await sendFcmToUser(
-      sellerId,
-      {
-        title: "🎉 Payment Released!",
-        body: `Buyer confirmed delivery. ₹${deal.agreedAmount} has been released to your Stripe account for Deal #${dealId}.`,
-      },
-      data
-    );
+    const notification = {
+      title: "🎉 Payment Released!",
+      body: `Buyer confirmed delivery. ₹${deal.agreedAmount} has been released to your Stripe account for Deal #${dealId}.`,
+    };
 
-    await sendFcmToAdmins(
-      {
-        title: "🎉 Escrow Released",
-        body: `Buyer confirmed delivery for Deal #${dealId}. ₹${deal.agreedAmount} released to seller.`,
-      },
-      data
-    );
+    await sendFcmToUser(sellerId, notification, data);
+    await saveNotification(sellerId, notification, data);
+
+    const adminNotification = {
+      title: "🎉 Escrow Released",
+      body: `Buyer confirmed delivery for Deal #${dealId}. ₹${deal.agreedAmount} released to seller.`,
+    };
+
+    await sendFcmToAdmins(adminNotification, data);
+    await saveNotificationToAdmins(adminNotification, data);
   } catch (err: any) {
     console.error("notifyEscrowReleased error:", err.message);
   }
@@ -391,31 +320,26 @@ export const notifyEscrowRefunded = async (dealId: string) => {
     const buyerId = deal.buyerId.toString();
     const data: Record<string, string> = { type: "ESCROW_REFUNDED", dealId };
 
-    await sendFcmToUser(
-      buyerId,
-      {
-        title: "💰 Refund Processed",
-        body: `Your escrow payment of ₹${deal.agreedAmount} for Deal #${dealId} has been refunded.`,
-      },
-      data
-    );
+    const buyerNotification = {
+      title: "💰 Refund Processed",
+      body: `Your escrow payment of ₹${deal.agreedAmount} for Deal #${dealId} has been refunded.`,
+    };
+    await sendFcmToUser(buyerId, buyerNotification, data);
+    await saveNotification(buyerId, buyerNotification, data);
 
-    await sendFcmToUser(
-      sellerId,
-      {
-        title: "🔄 Deal Refunded",
-        body: `Escrow of ₹${deal.agreedAmount} for Deal #${dealId} has been refunded to the buyer.`,
-      },
-      data
-    );
+    const sellerNotification = {
+      title: "🔄 Deal Refunded",
+      body: `Escrow of ₹${deal.agreedAmount} for Deal #${dealId} has been refunded to the buyer.`,
+    };
+    await sendFcmToUser(sellerId, sellerNotification, data);
+    await saveNotification(sellerId, sellerNotification, data);
 
-    await sendFcmToAdmins(
-      {
-        title: "🔄 Escrow Refunded",
-        body: `Escrow refund processed for Deal #${dealId}. Amount: ₹${deal.agreedAmount}.`,
-      },
-      data
-    );
+    const adminNotification = {
+      title: "🔄 Escrow Refunded",
+      body: `Escrow refund processed for Deal #${dealId}. Amount: ₹${deal.agreedAmount}.`,
+    };
+    await sendFcmToAdmins(adminNotification, data);
+    await saveNotificationToAdmins(adminNotification, data);
   } catch (err: any) {
     console.error("notifyEscrowRefunded error:", err.message);
   }
@@ -440,8 +364,11 @@ export const notifyDisputeRaised = async (dealId: string, reason: string) => {
     };
 
     await sendFcmToUser(sellerId, notification, data);
+    await saveNotification(sellerId, notification, data);
     await sendFcmToUser(buyerId, notification, data);
+    await saveNotification(buyerId, notification, data);
     await sendFcmToAdmins(notification, data);
+    await saveNotificationToAdmins(notification, data);
   } catch (err: any) {
     console.error("notifyDisputeRaised error:", err.message);
   }
@@ -466,7 +393,9 @@ export const notifyDisputeResolved = async (dealId: string, resolution: string) 
     };
 
     await sendFcmToUser(sellerId, notification, data);
+    await saveNotification(sellerId, notification, data);
     await sendFcmToUser(buyerId, notification, data);
+    await saveNotification(buyerId, notification, data);
   } catch (err: any) {
     console.error("notifyDisputeResolved error:", err.message);
   }
@@ -491,8 +420,11 @@ export const notifyDealCancelled = async (dealId: string) => {
     };
 
     await sendFcmToUser(sellerId, notification, data);
+    await saveNotification(sellerId, notification, data);
     await sendFcmToUser(buyerId, notification, data);
+    await saveNotification(buyerId, notification, data);
     await sendFcmToAdmins(notification, data);
+    await saveNotificationToAdmins(notification, data);
   } catch (err: any) {
     console.error("notifyDealCancelled error:", err.message);
   }
@@ -518,6 +450,7 @@ export const notifyAdminsNewAdvertisement = async (
     };
 
     await sendFcmToAdmins(notification, data);
+    await saveNotificationToAdmins(notification, data);
   } catch (err: any) {
     console.error("notifyAdminsNewAdvertisement error:", err.message);
   }
@@ -561,6 +494,7 @@ export const notifyAdOwnerStatusUpdate = async (
     }
 
     await sendFcmToUser(ad.advertiserId.toString(), { title, body }, data);
+    await saveNotification(ad.advertiserId.toString(), { title, body }, data);
   } catch (err: any) {
     console.error("notifyAdOwnerStatusUpdate error:", err.message);
   }
@@ -593,6 +527,7 @@ export const notifyUserKycStatus = async (
     }
 
     await sendFcmToUser(userId, { title, body }, data);
+    await saveNotification(userId, { title, body }, data);
   } catch (err: any) {
     console.error("notifyUserKycStatus error:", err.message);
   }
@@ -622,6 +557,7 @@ export const notifyAdminsSystemLog = async (log: ISystemLog) => {
     };
 
     await sendFcmToAdmins(notification, data);
+    await saveNotificationToAdmins(notification, data);
   } catch (err: any) {
     console.error("notifyAdminsSystemLog error:", err.message);
   }
