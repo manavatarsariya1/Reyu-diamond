@@ -383,7 +383,7 @@ export const raiseDisputeService = async (
     const isSeller = deal.sellerId.toString() === userId;
     const isAdmin = role === "admin";
 
-    if (!isBuyer && !isSeller && !isAdmin) {
+    if (!isBuyer && !isSeller) {
       throw new Error("Only buyer/seller/admin can raise dispute");
     }
 
