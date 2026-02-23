@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import sendResponse from "../utils/api.response.js";
 import { createAuctionService, getAuctionsService, getAuctionByIdService, updateAuctionService, deleteAuctionService } from "../services/auction.service.js";
 import { notifyAllUsersNewAuction } from "../services/notification.service.js";
@@ -8,27 +8,17 @@ interface AuthenticatedRequest extends Request {
   userRole?: string;
 }
 
-export const createAuction = async (req: AuthenticatedRequest, res: Response) => {
+export const createAuction = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { inventoryId } = req.params;
+    const { inventoryId } = req.params as { inventoryId: string };
     const { basePrice, startDate, endDate } = req.body;
 
     if (!inventoryId || typeof inventoryId !== "string") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Invalid Inventory ID",
-      });
+      next(Object.assign(new Error("Invalid Inventory ID"), { statusCode: 400 }));
     }
 
     if (!basePrice || !startDate || !endDate) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Missing required fields",
-      });
+      next(Object.assign(new Error("Missing required fields"), { statusCode: 400 }));
     }
 
     const auction = await createAuctionService({
@@ -40,7 +30,7 @@ export const createAuction = async (req: AuthenticatedRequest, res: Response) =>
     });
 
     // Fire-and-forget: notify all users about the new auction - notification
-    notifyAllUsersNewAuction((auction._id as any).toString()) 
+    notifyAllUsersNewAuction((auction._id as any).toString())
       .catch((err) => console.error("Auction notification failed:", err));
 
     return sendResponse({
@@ -51,16 +41,11 @@ export const createAuction = async (req: AuthenticatedRequest, res: Response) =>
       data: auction,
     });
   } catch (error) {
-    return sendResponse({
-      res,
-      statusCode: 400,
-      success: false,
-      message: (error as Error).message || "Failed to create auction",
-    });
+    next(error);
   }
 };
 
-export const getAuctions = async (req: Request, res: Response) => {
+export const getAuctions = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const query = req.query;
     const auctions = await getAuctionsService(query);
@@ -73,26 +58,16 @@ export const getAuctions = async (req: Request, res: Response) => {
       data: auctions,
     });
   } catch (error) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: (error as Error).message || "Failed to retrieve auctions",
-    });
+    next(error);
   }
 };
 
-export const getAuction = async (req: Request, res: Response) => {
+export const getAuction = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { auctionId } = req.params;
+    const { auctionId } = req.params as { auctionId: string };
 
     if (!auctionId || typeof auctionId !== "string") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Invalid Auction ID",
-      });
+      next(Object.assign(new Error("Invalid Auction ID"), { statusCode: 400 }));
     }
 
     const auction = await getAuctionByIdService(auctionId);
@@ -105,27 +80,17 @@ export const getAuction = async (req: Request, res: Response) => {
       data: auction,
     });
   } catch (error) {
-    return sendResponse({
-      res,
-      statusCode: 404, // Assuming error implies not found or bad request, but 404 is common for ID lookups failure
-      success: false,
-      message: (error as Error).message || "Failed to retrieve auction",
-    });
+    next(error);
   }
 };
 
-export const updateAuction = async (req: AuthenticatedRequest, res: Response) => {
+export const updateAuction = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { auctionId } = req.params;
+    const { auctionId } = req.params as { auctionId: string };
     const updates = req.body;
 
     if (!auctionId || typeof auctionId !== "string") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Invalid Auction ID",
-      });
+      next(Object.assign(new Error("Invalid Auction ID"), { statusCode: 400 }));
     }
 
     const auction = await updateAuctionService(
@@ -141,35 +106,16 @@ export const updateAuction = async (req: AuthenticatedRequest, res: Response) =>
       data: auction,
     });
   } catch (error) {
-    return sendResponse({
-      res,
-      statusCode: 400,
-      success: false,
-      message: (error as Error).message || "Failed to update auction",
-    });
+    next(error);
   }
 };
 
-export const deleteAuction = async (req: AuthenticatedRequest, res: Response) => {
+export const deleteAuction = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { auctionId } = req.params;
+    const { auctionId } = req.params as { auctionId: string };
 
     if (!auctionId || typeof auctionId !== "string") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Invalid Auction ID",
-      });
-    }
-
-    if (!req.user || !req.user.id) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Unauthorized",
-      });
+      next(Object.assign(new Error("Invalid Auction ID"), { statusCode: 400 }));
     }
 
     await deleteAuctionService(auctionId, req.user.id, req.userRole || "");
@@ -181,11 +127,6 @@ export const deleteAuction = async (req: AuthenticatedRequest, res: Response) =>
       message: "Auction deleted successfully",
     });
   } catch (error) {
-    return sendResponse({
-      res,
-      statusCode: 400,
-      success: false,
-      message: (error as Error).message || "Failed to delete auction",
-    });
+    next(error);
   }
 };

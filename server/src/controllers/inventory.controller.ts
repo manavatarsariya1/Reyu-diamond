@@ -1,4 +1,4 @@
-import type { Request, Response } from "express"
+import type { Request, Response, NextFunction } from "express"
 import sendResponse from "../utils/api.response.js"
 import { createInventoryService, getAllInventoriesService, updateInventoryService, findInventoryById, deleteInventoryService } from "../services/inventory.service.js"
 import { generateUniqueBarcode } from "../utils/barcode.util.js";
@@ -6,7 +6,7 @@ import { uploadToCloudinary } from "../services/cloudinary.service.js";
 import mongoose from "mongoose";
 import { checkAndNotifyRequirements } from "../services/notification.service.js";
 
-export const createInventory = async (req: Request, res: Response) => {
+export const createInventory = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user.id;
 
@@ -51,18 +51,11 @@ export const createInventory = async (req: Request, res: Response) => {
       message: "Inventory created successfully",
     });
   } catch (error) {
-    console.log(error)
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to create inventory",
-      errors: (error as Error).message,
-    });
+    next(Object.assign(new Error("Failed to create inventory"), { statusCode: 500 }));
   }
 };
 
-export const getAllInventories = async (req: Request, res: Response) => {
+export const getAllInventories = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filters = req.query;
     const requirements = await getAllInventoriesService(filters);
@@ -74,45 +67,24 @@ export const getAllInventories = async (req: Request, res: Response) => {
       message: "All Inventories fetched successfully",
     });
   } catch (error) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to fetch requirements",
-      errors: (error as Error).message || "Something went wrong",
-    });
+    next(Object.assign(new Error("Failed to fetch inventories"), { statusCode: 500 }));
   }
 };
 
-export const getInventoryById = async (req: Request, res: Response) => {
+export const getInventoryById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     if (!id || typeof id !== "string") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Inventory ID is required",
-      });
+      next(Object.assign(new Error("Inventory ID is required"), { statusCode: 400 }));
     }
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Invalid inventory ID format",
-      });
+      next(Object.assign(new Error("Invalid inventory ID format"), { statusCode: 400 }));
     }
     const inventory = await findInventoryById(id);
 
     if (!inventory) {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: "Inventory not found",
-      });
+      next(Object.assign(new Error("Inventory not found"), { statusCode: 404 }));
     }
 
     return sendResponse({
@@ -123,29 +95,18 @@ export const getInventoryById = async (req: Request, res: Response) => {
       data: inventory,
     });
   } catch (error) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to fetch inventory",
-      errors: (error as Error).message ?? "Something went wrong",
-    })
+    next(error);
   }
 }
 
-export const updateInventory = async (req: Request, res: Response) => {
+export const updateInventory = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const userId = (req as any).user.id;
     const userRole = (req as any).userRole;
 
     if (!id || typeof id !== "string") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Inventory ID is required",
-      });
+      next(Object.assign(new Error("Inventory ID is required"), { statusCode: 400 }));
     }
 
     const updatedItem = await updateInventoryService(
@@ -156,12 +117,7 @@ export const updateInventory = async (req: Request, res: Response) => {
     );
 
     if (!updatedItem) {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: "Inventory not found or unauthorized",
-      });
+      next(Object.assign(new Error("Inventory not found or unauthorized"), { statusCode: 404 }));
     }
 
     return sendResponse({
@@ -172,28 +128,17 @@ export const updateInventory = async (req: Request, res: Response) => {
       message: "Inventory updated successfully",
     });
   } catch (error) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to update inventory",
-      errors: (error as Error).message ?? "Something went wrong",
-    });
+    next(error);
   }
 };
 
-export const deleteInventory = async (req: Request, res: Response) => {
+export const deleteInventory = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id:string };
     const userId = (req as any).user.id;
     const userRole = (req as any).userRole;
     if (!id || typeof id !== "string") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Inventory ID is required",
-      });
+      next(Object.assign(new Error("Inventory ID is required"), { statusCode: 400 }));
     }
     const deletedInventory = await deleteInventoryService(userId, id, userRole);
 
@@ -205,15 +150,6 @@ export const deleteInventory = async (req: Request, res: Response) => {
       message: "Inventory deleted successfully",
     });
   } catch (error: any) {
-    const statusCode = error?.statusCode || 500;
-    const message = error?.message || "Failed to delete inventory";
-
-    return sendResponse({
-      res,
-      statusCode,
-      success: false,
-      message,
-      errors: message,
-    });
+    next(error);
   }
 }

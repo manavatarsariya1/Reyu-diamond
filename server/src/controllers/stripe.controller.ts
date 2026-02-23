@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { stripeService } from "../services/stripe.service.js";
 import { logService } from "../services/log.service.js";
 import User from "../models/User.model.js";
@@ -12,14 +12,16 @@ import {
     notifyEscrowRefunded,
 } from "../services/notification.service.js";
 
-export const onboardUser = async (req: Request, res: Response) => {
+export const onboardUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = (req as any).user.id;
 
         const user = await User.findById(userId);
 
         if (!user) {
-            return sendResponse({ res, statusCode: 404, success: false, message: "User not found" });
+            const err: any = new Error("User not found");
+            err.statusCode = 404;
+            throw err;
         }
 
         let accountId = user.stripeAccountId;
@@ -55,28 +57,33 @@ export const onboardUser = async (req: Request, res: Response) => {
 
         return sendResponse({ res, statusCode: 200, success: true, message: "Onboarding link generated", data: { url: accountLink } });
     } catch (error: any) {
-        console.error("Onboarding error:", error);
-        return sendResponse({ res, statusCode: 500, success: false, message: error.message });
+        next(error);
     }
 };
 
-export const initiatePayment = async (req: Request, res: Response) => {
+export const initiatePayment = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { dealId } = req.body;
         const userId = (req as any).user._id || (req as any).user.id;
 
         if (!dealId) {
-            return sendResponse({ res, statusCode: 400, success: false, message: "Deal ID is required" });
+            const err: any = new Error("Deal ID is required");
+            err.statusCode = 400;
+            throw err;
         }
 
         const deal = await Deal.findById(dealId);
         if (!deal) {
-            return sendResponse({ res, statusCode: 404, success: false, message: "Deal not found" });
+            const err: any = new Error("Deal not found");
+            err.statusCode = 404;
+            throw err;
         }
 
         // Verify the user is the buyer
         if (deal.buyerId.toString() !== userId.toString()) {
-            return sendResponse({ res, statusCode: 403, success: false, message: "Only the buyer can initiate payment for this deal" });
+            const err: any = new Error("Only the buyer can initiate payment for this deal");
+            err.statusCode = 403;
+            throw err;
         }
 
         const { clientSecret, paymentIntentId } = await stripeService.createPaymentIntent(deal);
@@ -95,8 +102,7 @@ export const initiatePayment = async (req: Request, res: Response) => {
         return sendResponse({ res, statusCode: 200, success: true, message: "Payment initiated", data: { clientSecret, paymentIntentId } });
 
     } catch (error: any) {
-        console.error("Payment initiation error:", error);
-        return sendResponse({ res, statusCode: 500, success: false, message: error.message });
+        next(error);
     }
 };
 
@@ -235,23 +241,29 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
     }
 };
 
-export const releaseEscrow = async (req: Request, res: Response) => {
+export const releaseEscrow = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { dealId } = req.body;
         const userId = (req as any).user._id || (req as any).user.id;
 
         if (!dealId) {
-            return sendResponse({ res, statusCode: 400, success: false, message: "Deal ID is required" });
+            const err: any = new Error("Deal ID is required");
+            err.statusCode = 400;
+            throw err;
         }
 
         const deal = await Deal.findById(dealId);
         if (!deal) {
-            return sendResponse({ res, statusCode: 404, success: false, message: "Deal not found" });
+            const err: any = new Error("Deal not found");
+            err.statusCode = 404;
+            throw err;
         }
 
         // Only buyer can release
         if (deal.buyerId.toString() !== userId.toString()) {
-            return sendResponse({ res, statusCode: 403, success: false, message: "Only buyer can release payment" });
+            const err: any = new Error("Only buyer can release payment");
+            err.statusCode = 403;
+            throw err;
         }
 
         const result = await stripeService.releaseEscrow(dealId);
@@ -266,29 +278,34 @@ export const releaseEscrow = async (req: Request, res: Response) => {
 
         return sendResponse({ res, statusCode: 200, success: true, message: "Escrow released successfully", data: result });
     } catch (error: any) {
-        console.error("Release error:", error);
-        return sendResponse({ res, statusCode: 500, success: false, message: error.message });
+        next(error);
     }
 };
 
-export const refundEscrow = async (req: Request, res: Response) => {
+export const refundEscrow = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { dealId } = req.body;
         const userId = (req as any).user._id || (req as any).user.id;
         const userRole = (req as any).user.role;
 
         if (!dealId) {
-            return sendResponse({ res, statusCode: 400, success: false, message: "Deal ID is required" });
+            const err: any = new Error("Deal ID is required");
+            err.statusCode = 400;
+            throw err;
         }
 
         const deal = await Deal.findById(dealId);
         if (!deal) {
-            return sendResponse({ res, statusCode: 404, success: false, message: "Deal not found" });
+            const err: any = new Error("Deal not found");
+            err.statusCode = 404;
+            throw err;
         }
 
         // seller or admin can refund
         if (deal.sellerId.toString() !== userId.toString() && userRole !== 'admin') {
-            return sendResponse({ res, statusCode: 403, success: false, message: "Not allowed to refund this deal." });
+            const err: any = new Error("Not allowed to refund this deal.");
+            err.statusCode = 403;
+            throw err;
         }
 
         const result = await stripeService.refundEscrow(dealId);
@@ -308,18 +325,19 @@ export const refundEscrow = async (req: Request, res: Response) => {
 
         return sendResponse({ res, statusCode: 200, success: true, message: "Escrow refunded successfully", data: result });
     } catch (error: any) {
-        console.error("Refund error:", error);
-        return sendResponse({ res, statusCode: 500, success: false, message: error.message });
+        next(error);
     }
 };
 
-export const buyerConfirmDelivery = async (req: Request, res: Response) => {
+export const buyerConfirmDelivery = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { dealId, notes } = req.body;
         const userId = (req as any).user._id || (req as any).user.id;
 
         if (!dealId) {
-            return sendResponse({ res, statusCode: 400, success: false, message: "Deal ID is required" });
+            const err: any = new Error("Deal ID is required");
+            err.statusCode = 400;
+            throw err;
         }
 
         const result = await stripeService.buyerConfirmDelivery(
@@ -333,7 +351,6 @@ export const buyerConfirmDelivery = async (req: Request, res: Response) => {
 
         return sendResponse({ res, statusCode: 200, success: true, message: "Buyer confirmed & escrow released", data: result });
     } catch (error: any) {
-        console.error("Buyer confirm error:", error);
-        return sendResponse({ res, statusCode: 500, success: false, message: error.message });
+        next(error);
     }
 };

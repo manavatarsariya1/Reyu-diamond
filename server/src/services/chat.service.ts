@@ -3,19 +3,55 @@ import Message from "../models/Message.model.js";
 import mongoose from "mongoose";
 import { getIO } from "../socket.js";
 import { uploadToCloudinaryDetails, deleteFromCloudinary } from "../services/cloudinary.service.js";
+import Inventory from "../models/Inventory.model.js";
+import { Auction } from "../models/Auction.model.js";
 
 export const createConversation = async (
   participants: string[],
-  auctionId: string
+  contextId: string,
+  contextType: "Auction" | "Inventory"
 ) => {
   if (participants.length !== 2) {
-    const err: any = new Error("Need seller & bidder");
+    const err: any = new Error("Need authenticated seller or buyer");
     err.statusCode = 400;
     throw err;
   }
 
+  const inventory = await Inventory.findById(contextId);
+
+  if (contextType === "Inventory" && !inventory) {
+    const err: any = new Error("Inventory is not existing");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const auction = await Auction.findById(contextId).populate("inventoryId");
+  if (contextType === "Auction" && !auction) {
+    const err: any = new Error("Auction is not existing");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  // Extract the sellerId from either the inventory or the populated auction inventory
+  const sellerId = (inventory?.sellerId || (auction?.inventoryId as any)?.sellerId)?.toString();
+
+  if (!sellerId) {
+    const err: any = new Error("Seller information not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // Check if the seller is one of the participants. 
+  // At least one participant must be the owner of the item.
+  if (!participants.includes(sellerId)) {
+    const err: any = new Error("You are not authorized to create conversation");
+    err.statusCode = 403;
+    throw err;
+  }
+
   const exists = await Chat.findOne({
-    auctionId,
+    contextId,
+    contextType,
     participants: { $all: participants },
   });
 
@@ -28,7 +64,8 @@ export const createConversation = async (
 
   return await Chat.create({
     participants,
-    auctionId,
+    contextId,
+    contextType,
     unreadCounts: {},
   });
 };
@@ -36,7 +73,7 @@ export const createConversation = async (
 export const getUserConversations = async (userId: string) => {
   return Chat.find({ participants: userId })
     .populate("participants", "username email")
-    .populate("auctionId", "title")
+    .populate("contextId")
     .populate({
       path: "lastMessage",
       populate: { path: "sender", select: "username" },

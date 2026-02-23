@@ -1,9 +1,9 @@
-import type { Response } from "express";
+import type { Response, NextFunction } from "express";
 import type { AuthRequest } from "../middlewares/auth.middleware.js";
 import * as chatService from "../services/message.service.js";
 import sendResponse from "../utils/api.response.js";
 
-export const sendMessage = async (req: AuthRequest, res: Response) => {
+export const sendMessage = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { conversationId, content } = req.body;
     const senderId = req.user?.id;
@@ -24,18 +24,14 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       data: message,
     });
   } catch (error: any) {
-    return sendResponse({
-      res,
-      statusCode: error.statusCode || 500,
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
 export const getConversationMessages = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const { conversationId } = req.params;
@@ -54,16 +50,11 @@ export const getConversationMessages = async (
       data: messages,
     });
   } catch (error: any) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
-export const deleteMessage = async (req: AuthRequest, res: Response) => {
+export const deleteMessage = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { messageId } = req.params;
     const userId = req.user?.id;
@@ -77,11 +68,6 @@ export const deleteMessage = async (req: AuthRequest, res: Response) => {
       message: "Message deleted successfully",
     });
   } catch (error: any) {
-    return sendResponse({
-      res,
-      statusCode: error.statusCode || 500,
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };

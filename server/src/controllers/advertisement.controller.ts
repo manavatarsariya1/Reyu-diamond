@@ -26,13 +26,7 @@ export const createAdvertisement = async (
         }
 
         if (!file && !req.body.mediaUrl) {
-            return sendResponse({
-                res,
-                statusCode: 400,
-                success: false,
-                message: "Validation Error",
-                errors: "Media file or URL is required"
-            });
+            next(Object.assign(new Error("Media file or URL is required"), { statusCode: 400 }));
         }
 
         const advertisement = await advertisementService.createAdvertisement(
@@ -107,13 +101,7 @@ export const getAdvertisementById = async (
     try {
         const { advertisementId } = req.params;
         if (!advertisementId) {
-            return sendResponse({
-                res,
-                statusCode: 400,
-                success: false,
-                message: "Validation Error",
-                errors: "Advertisement ID is required"
-            });
+            next(Object.assign(new Error("Advertisement ID is required"), { statusCode: 400 }));
         }
         const advertisement = await advertisementService.getAdvertisementById(advertisementId as string);
         return sendResponse({

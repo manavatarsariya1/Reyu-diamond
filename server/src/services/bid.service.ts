@@ -117,20 +117,6 @@ export const createBidService = async ({
       await session.commitTransaction();
       session.endSession();
 
-      const bidObj = bid[0];
-
-      // Create conversation between buyer and seller
-      // inventory.sellerId is the owner of the item/auction
-      try {
-        await createConversation(
-          [buyerId, inventory.sellerId.toString()],
-          auctionId
-        );
-      } catch (chatError) {
-        console.error("Failed to create conversation after bid:", chatError);
-        // Don't fail the bid creation if chat creation fails, just log it
-      }
-
       return bid[0];
     } catch (error) {
       await session.abortTransaction();
@@ -169,16 +155,6 @@ export const createBidService = async ({
     // Update Inventory price
     inventory.currentBiddingPrice = bidAmount;
     await inventory.save();
-
-    // Create conversation between buyer and seller
-    try {
-      await createConversation(
-        [buyerId, inventory.sellerId.toString()],
-        auctionId
-      );
-    } catch (chatError) {
-      console.error("Failed to create conversation after bid:", chatError);
-    }
 
     return bid;
   }

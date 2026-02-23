@@ -43,7 +43,7 @@ const errorHandler = (
     res,
     statusCode: err.statusCode || 500,
     success: false,
-    message: "Something went wrong. Please try again.",
+    message: err.message || "Something went wrong. Please try again.",
     errors: err.message || "Unknown error",
   });
 };

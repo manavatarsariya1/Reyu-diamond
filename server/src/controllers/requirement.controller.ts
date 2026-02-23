@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import {
   createRequirementService,
   getAllRequirementsService,
@@ -9,17 +9,14 @@ import {
 } from "../services/requirement.service.js";
 import sendResponse from "../utils/api.response.js";
 
-export const createRequirement = async (req: Request, res: Response) => {
+export const createRequirement = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.id as string | undefined;
 
     if (!userId) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Unauthorized",
-      });
+      const err: any = new Error("Unauthorized");
+      err.statusCode = 401;
+      throw err;
     }
 
     const { shape, carat, color, clarity, lab, location, budget } = req.body;
@@ -42,17 +39,11 @@ export const createRequirement = async (req: Request, res: Response) => {
       message: "Requirement created successfully",
     });
   } catch (error) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to save requirement",
-      errors: (error as Error).message || "Something went wrong",
-    });
+    next(error);
   }
 };
 
-export const getAllRequirements = async (req: Request, res: Response) => {
+export const getAllRequirements = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const requirements = await getAllRequirementsService();
     return sendResponse({
@@ -63,28 +54,19 @@ export const getAllRequirements = async (req: Request, res: Response) => {
       message: "All Requirements fetched successfully",
     });
   } catch (error) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to fetch requirements",
-      errors: (error as Error).message || "Something went wrong",
-    });
+    next(error);
   }
 };
 
-export const updateRequirements = async (req: Request, res: Response) => {
+export const updateRequirements = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const requirementId = req.params.id as string;
     const updateData = req.body;
 
     if (!requirementId) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Requirement ID is required",
-      });
+      const err: any = new Error("Requirement ID is required");
+      err.statusCode = 400;
+      throw err;
     }
 
     const updatedRequirement = await updateRequirementByIdService(requirementId, updateData);
@@ -99,35 +81,24 @@ export const updateRequirements = async (req: Request, res: Response) => {
   } catch (error) {
     const msg = (error as Error).message;
     if (msg === "Invalid requirement id") {
-      return sendResponse({ res, statusCode: 400, success: false, message: msg });
+      (error as any).statusCode = 400;
+    } else if (msg === "Requirement not found") {
+      (error as any).statusCode = 404;
+    } else if (msg?.includes("not authorized")) {
+      (error as any).statusCode = 403;
     }
-    if (msg === "Requirement not found") {
-      return sendResponse({ res, statusCode: 404, success: false, message: msg });
-    }
-    if (msg?.includes("not authorized")) {
-      return sendResponse({ res, statusCode: 403, success: false, message: msg });
-    }
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to update requirement",
-      errors: msg || "Something went wrong",
-    });
+    next(error);
   }
 };
 
-export const getMyRequirements = async (req: Request, res: Response) => {
+export const getMyRequirements = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.id as string | undefined;
 
     if (!userId) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Unauthorized",
-      });
+      const err: any = new Error("Unauthorized");
+      err.statusCode = 401;
+      throw err;
     }
 
     const requirements = await getMyRequirementsService(userId);
@@ -142,26 +113,17 @@ export const getMyRequirements = async (req: Request, res: Response) => {
         : "No requirements found.",
     });
   } catch (error) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to fetch requirement",
-      errors: (error as Error).message || "Something went wrong",
-    });
+    next(error);
   }
 };
 
-export const getRequirementById = async (req: Request, res: Response) => {
+export const getRequirementById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const requirementId = req.params.id as string;
     if (!requirementId) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Requirement ID is required",
-      });
+      const err: any = new Error("Requirement ID is required");
+      err.statusCode = 400;
+      throw err;
     }
     const requirement = await getRequirementByIdService(requirementId);
     return sendResponse({
@@ -172,26 +134,17 @@ export const getRequirementById = async (req: Request, res: Response) => {
       message: "Requirement fetched successfully",
     });
   } catch (error) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to fetch requirement",
-      errors: (error as Error).message || "Something went wrong",
-    });
+    next(error);
   }
 };
 
-export const deleteRequirement = async (req: Request, res: Response) => {
+export const deleteRequirement = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const requirementId = req.params.id as string;
     if (!requirementId) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Requirement ID is required",
-      });
+      const err: any = new Error("Requirement ID is required");
+      err.statusCode = 400;
+      throw err;
     }
 
     const dlt = await deleteRequirementService(requirementId);
@@ -203,12 +156,6 @@ export const deleteRequirement = async (req: Request, res: Response) => {
       message: "Requirement deleted successfully",
     });
   } catch (error) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to delete requirement",
-      errors: (error as Error).message || "Something went wrong",
-    });
+    next(error);
   }
 };
