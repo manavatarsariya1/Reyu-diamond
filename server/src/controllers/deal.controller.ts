@@ -20,27 +20,21 @@ import {
   notifyDealCancelled,
 } from "../services/notification.service.js";
 
-export const dealCreation = async (req: Request, res: Response) => {
+export const dealCreation = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const bidId = req.params.bidId as string;
     const userId = (req as any).user?.id as string | undefined;
 
     if (!bidId) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Bid ID is required",
-      });
+      const err: any = new Error("Bid ID is required");
+      err.statusCode = 400;
+      throw err;
     }
 
     if (!userId) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Unauthorized",
-      });
+      const err: any = new Error("Unauthorized");
+      err.statusCode = 401;
+      return next(err);
     }
 
     const deal = await createDealService(bidId, userId);
@@ -53,76 +47,31 @@ export const dealCreation = async (req: Request, res: Response) => {
       data: deal,
     });
   } catch (error: any) {
-    const msg = error?.message as string | undefined;
-
-    switch (msg) {
-      case "Invalid bid id":
-        return sendResponse({
-          res,
-          statusCode: 400,
-          success: false,
-          message: msg,
-        });
-
-      case "Deal already exists for this bid":
-        return sendResponse({
-          res,
-          statusCode: 409,
-          success: false,
-          message: msg,
-        });
-
-      case "Bid not found":
-      case "Inventory not found":
-        return sendResponse({
-          res,
-          statusCode: 404,
-          success: false,
-          message: msg,
-        });
-
-      case "You are not authorized to create a deal for this bid":
-        return sendResponse({
-          res,
-          statusCode: 403,
-          success: false,
-          message: msg,
-        });
-
-      default:
-        return sendResponse({
-          res,
-          statusCode: 500,
-          success: false,
-          message: "Failed to create deal",
-          errors: msg ?? "Something went wrong",
-        });
-    }
+    const msg = error?.message;
+    if (msg === "Invalid bid id") error.statusCode = 400;
+    else if (msg === "Deal already exists for this bid") error.statusCode = 409;
+    else if (msg === "Bid not found" || msg === "Inventory not found") error.statusCode = 404;
+    else if (msg === "You are not authorized to create a deal for this bid") error.statusCode = 403;
+    next(error);
   }
 };
 
-export const dealDetailsById = async (req: Request, res: Response) => {
+export const dealDetailsById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const dealId = req.params.dealId as string;
     const userId = (req as any).user?.id as string | undefined;
     const role = (req as any).userRole as "admin" | "user" | undefined;
 
     if (!dealId) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Deal ID is required",
-      });
+      const err: any = new Error("Deal ID is required");
+      err.statusCode = 400;
+      return next(err);
     }
 
     if (!userId || !role) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Unauthorized",
-      });
+      const err: any = new Error("Unauthorized");
+      err.statusCode = 401;
+      return next(err);
     }
 
     const deal = await getDealByIdService(
@@ -139,46 +88,15 @@ export const dealDetailsById = async (req: Request, res: Response) => {
       data: deal,
     });
   } catch (error: any) {
-    const msg = error?.message as string | undefined;
-
-    if (msg === "Invalid deal id") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: msg,
-      });
-    }
-
-    if (msg === "Deal not found") {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: msg,
-      });
-    }
-
-    if (msg === "You are not authorized to view this deal") {
-      return sendResponse({
-        res,
-        statusCode: 403,
-        success: false,
-        message: msg,
-      });
-    }
-
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to fetch deal",
-      errors: msg ?? "Something went wrong",
-    });
+    const msg = error?.message;
+    if (msg === "Invalid deal id") error.statusCode = 400;
+    else if (msg === "Deal not found") error.statusCode = 404;
+    else if (msg === "You are not authorized to view this deal") error.statusCode = 403;
+    next(error);
   }
 }
 
-export const getAllBids = async (req: Request, res: Response) => {
+export const getAllBids = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.id as string | undefined;
     const role = (req as any).userRole as "admin" | "user" | undefined;
@@ -186,12 +104,9 @@ export const getAllBids = async (req: Request, res: Response) => {
     const { search, userId: targetUserId, status, page, limit } = req.query;
 
     if (!userId || !role) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Unauthorized",
-      });
+      const err: any = new Error("Unauthorized");
+      err.statusCode = 401;
+      return next(err);
     }
 
     const pageNum = page ? parseInt(page as string) : 1;
@@ -211,18 +126,11 @@ export const getAllBids = async (req: Request, res: Response) => {
       data: result,
     });
   } catch (error: any) {
-    const msg = error?.message as string | undefined;
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to fetch deals",
-      errors: msg ?? "Something went wrong",
-    });
+    next(error);
   }
 };
 
-export const updateDealStatus = async (req: Request, res: Response) => {
+export const updateDealStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const dealId = req.params.dealId as string;
     const { status } = req.body;
@@ -231,12 +139,9 @@ export const updateDealStatus = async (req: Request, res: Response) => {
     const role = (req as any).userRole as "admin" | "user" | undefined;
 
     if (!dealId) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Deal ID is required",
-      });
+      const err: any = new Error("Deal ID is required");
+      err.statusCode = 400;
+      return next(err);
     }
 
     const allowedStatuses = [
@@ -251,22 +156,15 @@ export const updateDealStatus = async (req: Request, res: Response) => {
     ];
 
     if (!status || !allowedStatuses.includes(status)) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message:
-          "Status is required and must be one of: " + allowedStatuses.join(", "),
-      });
+      const err: any = new Error("Status is required and must be one of: " + allowedStatuses.join(", "));
+      err.statusCode = 400;
+      return next(err);
     }
 
     if (!userId || !role) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Unauthorized",
-      });
+      const err: any = new Error("Unauthorized");
+      err.statusCode = 401;
+      return next(err);
     }
 
     const updatedDeal = await updateDealStatusService(
@@ -284,64 +182,15 @@ export const updateDealStatus = async (req: Request, res: Response) => {
       data: updatedDeal,
     });
   } catch (error: any) {
-    const msg = error?.message as string | undefined;
-
-    if (msg === "Invalid deal id") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: msg,
-      });
-    }
-
-    if (msg === "Deal not found") {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: msg,
-      });
-    }
-
-    if (msg === "You are not authorized to update this deal") {
-      return sendResponse({
-        res,
-        statusCode: 403,
-        success: false,
-        message: msg,
-      });
-    }
-
-    if (msg === "Deal is already completed or cancelled and cannot be changed") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: msg,
-      });
-    }
-
-    if (msg === "Only admin can change status of a disputed deal") {
-      return sendResponse({
-        res,
-        statusCode: 403,
-        success: false,
-        message: msg,
-      });
-    }
-
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to update deal status",
-      errors: msg ?? "Something went wrong",
-    });
+    const msg = error?.message;
+    if (msg === "Invalid deal id" || msg === "Deal is already completed or cancelled and cannot be changed") error.statusCode = 400;
+    else if (msg === "Deal not found") error.statusCode = 404;
+    else if (msg === "You are not authorized to update this deal" || msg === "Only admin can change status of a disputed deal") error.statusCode = 403;
+    next(error);
   }
 };
 
-export const downloadPDF = async (req: Request, res: Response) => {
+export const downloadPDF = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const dealIdParam = req.params.dealId as string | string[] | undefined;
     const dealId = Array.isArray(dealIdParam) ? dealIdParam[0] : dealIdParam;
@@ -349,12 +198,9 @@ export const downloadPDF = async (req: Request, res: Response) => {
     const role = (req as any).userRole as "admin" | "user" | undefined;
 
     if (!dealId) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Deal ID is required",
-      });
+      const err: any = new Error("Deal ID is required");
+      err.statusCode = 400;
+      throw err;
     }
 
     const deal = await getDealByIdService(
@@ -389,44 +235,15 @@ export const downloadPDF = async (req: Request, res: Response) => {
     res.status(200);
     return res.end(pdfBuffer, "binary");
   } catch (error: any) {
-    const msg = error?.message as string | undefined;
-
-    if (msg === "Invalid deal id") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: msg,
-      });
-    }
-    if (msg === "Deal not found") {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: msg,
-      });
-    }
-    if (msg === "You are not authorized to view this deal") {
-      return sendResponse({
-        res,
-        statusCode: 403,
-        success: false,
-        message: msg,
-      });
-    }
-    console.log(error)
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to generate deal PDF",
-      errors: msg ?? "Something went wrong",
-    });
+    const msg = error?.message;
+    if (msg === "Invalid deal id") error.statusCode = 400;
+    else if (msg === "Deal not found") error.statusCode = 404;
+    else if (msg === "You are not authorized to view this deal") error.statusCode = 403;
+    next(error);
   }
 };
 
-export const cancelDeal = async (req: any, res: Response) => {
+export const cancelDeal = async (req: any, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user.id;
     const role = (req as any).userRole;
@@ -450,17 +267,11 @@ export const cancelDeal = async (req: any, res: Response) => {
       data: result,
     });
   } catch (error: any) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to cancel deal",
-      errors: error?.message ?? "Something went wrong",
-    });
+    next(error);
   }
 };
 
-export const raiseDispute = async (req: any, res: Response) => {
+export const raiseDispute = async (req: any, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user.id;
     const role = (req as any).userRole;
@@ -491,17 +302,11 @@ export const raiseDispute = async (req: any, res: Response) => {
       data: deal,
     });
   } catch (error: any) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to raise dispute",
-      errors: error?.message ?? "Something went wrong",
-    });
+    next(error);
   }
 };
 
-export const resolveDispute = async (req: any, res: Response) => {
+export const resolveDispute = async (req: any, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user.id;
     const role = (req as any).userRole;
@@ -516,12 +321,9 @@ export const resolveDispute = async (req: any, res: Response) => {
 
     if (!["REFUND_BUYER", "RELEASE_SELLER"].includes(resolution)) {
       console.log("Invalid resolution:", resolution); // Why is it invalid?
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: `Invalid resolution type. Received: '${resolution}' (type: ${typeof resolution}). Must be REFUND_BUYER or RELEASE_SELLER`,
-      });
+      const err: any = new Error(`Invalid resolution type. Received: '${resolution}' (type: ${typeof resolution}). Must be REFUND_BUYER or RELEASE_SELLER`);
+      err.statusCode = 400;
+      throw err;
     }
 
     const result = await resolveDisputeService(
@@ -545,12 +347,6 @@ export const resolveDispute = async (req: any, res: Response) => {
       data: result,
     });
   } catch (error: any) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to resolve dispute",
-      errors: error?.message ?? "Something went wrong",
-    });
+    next(error);
   }
 };

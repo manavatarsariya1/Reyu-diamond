@@ -1,8 +1,8 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import Notification from "../models/Notification.model.js";
 import sendResponse from "../utils/api.response.js";
 
-export const getNotifications = async (req: Request, res: Response) => {
+export const getNotifications = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = (req as any).user.id;
         const { page = 1, limit = 20 } = req.query;
@@ -33,17 +33,11 @@ export const getNotifications = async (req: Request, res: Response) => {
             },
         });
     } catch (error: any) {
-        return sendResponse({
-            res,
-            statusCode: 500,
-            success: false,
-            message: "Failed to retrieve notifications",
-            errors: error.message,
-        });
+        next(error);
     }
 };
 
-export const markAsRead = async (req: Request, res: Response) => {
+export const markAsRead = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = (req as any).user.id;
         const { notificationId } = req.params;
@@ -55,12 +49,9 @@ export const markAsRead = async (req: Request, res: Response) => {
         );
 
         if (!notification) {
-            return sendResponse({
-                res,
-                statusCode: 404,
-                success: false,
-                message: "Notification not found",
-            });
+            const err: any = new Error("Notification not found");
+            err.statusCode = 404;
+            throw err;
         }
 
         return sendResponse({
@@ -71,17 +62,11 @@ export const markAsRead = async (req: Request, res: Response) => {
             data: notification,
         });
     } catch (error: any) {
-        return sendResponse({
-            res,
-            statusCode: 500,
-            success: false,
-            message: "Failed to mark notification as read",
-            errors: error.message,
-        });
+        next(error);
     }
 };
 
-export const markAllAsRead = async (req: Request, res: Response) => {
+export const markAllAsRead = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = (req as any).user.id;
 
@@ -97,12 +82,6 @@ export const markAllAsRead = async (req: Request, res: Response) => {
             message: "All notifications marked as read",
         });
     } catch (error: any) {
-        return sendResponse({
-            res,
-            statusCode: 500,
-            success: false,
-            message: "Failed to mark all notifications as read",
-            errors: error.message,
-        });
+        next(error);
     }
 };

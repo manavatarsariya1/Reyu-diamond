@@ -1,7 +1,7 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { ratingService } from "../services/rating.service.js";
 
-export const createRating = async (req: Request, res: Response) => {
+export const createRating = async (req: Request, res: Response, next: NextFunction) => {
     try {
         // validation is handled by middleware
         const { dealId, score, feedback } = req.body;
@@ -20,22 +20,18 @@ export const createRating = async (req: Request, res: Response) => {
             rating,
         });
     } catch (error: any) {
-        res.status(400).json({
-            success: false,
-            message: error.message,
-        });
+        next(error);
     }
 };
 
-export const getUserRatings = async (req: Request, res: Response) => {
+export const getUserRatings = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { userId } = req.params;
 
         if (typeof userId !== "string") {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid user ID",
-            });
+            const err: any = new Error("Invalid user ID");
+            err.statusCode = 400;
+            throw err;
         }
 
         const ratings = await ratingService.getUserRatings(userId);
@@ -45,9 +41,6 @@ export const getUserRatings = async (req: Request, res: Response) => {
             ratings,
         });
     } catch (error: any) {
-        res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        next(error);
     }
 };

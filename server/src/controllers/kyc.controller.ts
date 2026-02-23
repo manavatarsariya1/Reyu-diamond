@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import sendResponse from "../utils/api.response.js";
 import { uploadToCloudinaryDetails } from "../services/cloudinary.service.js";
 import { notifyAdminsForKyc } from "../services/notification.service.js";
@@ -10,27 +10,21 @@ import {
 
 import crypto from "crypto";
 
-export const submitKyc = async (req: Request, res: Response) => {
+export const submitKyc = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.id as string | undefined;
     if (!userId) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Not authorized",
-      });
+      const err: any = new Error("Not authorized");
+      err.statusCode = 401;
+      throw err;
     }
 
     const otpVerified = await isVerifedService(userId);
 
     if (!otpVerified) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Your e-mail is not verified",
-      });
+      const err: any = new Error("Your e-mail is not verified");
+      err.statusCode = 400;
+      throw err;
     }
 
     const {
@@ -71,12 +65,9 @@ export const submitKyc = async (req: Request, res: Response) => {
     const panFile = files?.find(f => f.fieldname.includes("pan"));
 
     if (!aadhaarFile || !panFile) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Aadhaar and PAN documents are required",
-      });
+      const err: any = new Error("Aadhaar and PAN documents are required");
+      err.statusCode = 400;
+      throw err;
     }
 
     // Helper for hashing
@@ -128,13 +119,6 @@ export const submitKyc = async (req: Request, res: Response) => {
       message: "KYC submitted successfully. Awaiting admin approval.",
     });
   } catch (err: any) {
-    console.error("Error in submitKyc:", err);
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to submit KYC",
-      errors: err?.message ?? "Something went wrong",
-    });
+    next(err);
   }
 };

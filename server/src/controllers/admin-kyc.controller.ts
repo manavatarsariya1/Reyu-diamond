@@ -1,10 +1,10 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import sendResponse from "../utils/api.response.js";
 import { reviewKycService, getAllKycService } from "../services/kyc-admin.service.js";
 import { logService } from "../services/log.service.js";
 import { notifyUserKycStatus } from "../services/notification.service.js";
 
-export const reviewKyc = async (req: Request, res: Response) => {
+export const reviewKyc = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { userId } = req.params;
     const { status, rejectionReason } = req.body as {
@@ -13,21 +13,15 @@ export const reviewKyc = async (req: Request, res: Response) => {
     };
 
     if (!userId || typeof userId !== "string") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Invalid user ID",
-      });
+      const err: any = new Error("Invalid user ID");
+      err.statusCode = 400;
+      throw err;
     }
 
     if (!status || !["approved", "rejected", "pending"].includes(status)) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Invalid status",
-      });
+      const err: any = new Error("Invalid status");
+      err.statusCode = 400;
+      throw err;
     }
 
     const kyc = await reviewKycService({
@@ -77,16 +71,14 @@ export const reviewKyc = async (req: Request, res: Response) => {
       message: `KYC ${status} successfully`,
     });
   } catch (error: any) {
-    return sendResponse({
-      res,
-      statusCode: error?.message === "KYC record not found" ? 404 : 500,
-      success: false,
-      message: error?.message || "Something went wrong",
-    });
+    if (error.message === "KYC record not found") {
+      error.statusCode = 404;
+    }
+    next(error);
   }
 };
 
-export const getAllKyc = async (req: Request, res: Response) => {
+export const getAllKyc = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { page, limit, status } = req.query;
 
@@ -107,13 +99,7 @@ export const getAllKyc = async (req: Request, res: Response) => {
       data: result,
     });
   } catch (error: any) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to retrieve KYC records",
-      errors: error.message || "Something went wrong",
-    });
+    next(error);
   }
 };
 

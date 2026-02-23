@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import sendResponse from "../utils/api.response.js";
 import {
   createBidService,
@@ -10,7 +10,7 @@ import {
 import { createSystemDealService } from "../services/deal.service.js";
 import { notifyDealCreated, notifyAuctionOwnerNewBid } from "../services/notification.service.js";
 
-export const createBid = async (req: Request, res: Response) => {
+export const createBid = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const auctionId = Array.isArray(req.params.auctionId)
       ? req.params.auctionId[0]
@@ -22,30 +22,21 @@ export const createBid = async (req: Request, res: Response) => {
     const buyerId = (req as any).user?.id as string | undefined;
 
     if (!buyerId) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "BuyerId is required",
-      });
+      const err: any = new Error("BuyerId is required");
+      err.statusCode = 400;
+      throw err;
     }
 
     if (!auctionId) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Valid auctionId is required",
-      });
+      const err: any = new Error("Valid auctionId is required");
+      err.statusCode = 400;
+      throw err;
     }
 
     if (!bidAmount || bidAmount <= 0) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Valid bidAmount is required",
-      });
+      const err: any = new Error("Valid bidAmount is required");
+      err.statusCode = 400;
+      throw err;
     }
 
     const bid = await createBidService({
@@ -70,74 +61,27 @@ export const createBid = async (req: Request, res: Response) => {
       data: bid ?? null,
     });
   } catch (error: any) {
-    if (error.message === "action owner is can not be do bid on the owner's invenory") {
-      return sendResponse({
-        res,
-        statusCode: 403,
-        success: false,
-        message: "action owner is can not be do bid on the owner's invenory",
-      });
-    }
-
     if (error.message === "Inventory not found") {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: "Inventory not found",
-      });
+      error.statusCode = 404;
+    } else if (error.message === "action owner is can not be do bid on the owner's invenory") {
+      error.statusCode = 403;
+    } else {
+      error.statusCode = 400;
     }
-
-    if (error.message === "Inventory is not available for bidding") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Inventory is not available for bidding",
-      });
-    }
-
-    if (error.message?.includes("Bid must be higher")) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: error.message,
-      });
-    }
-
-    if (error.message?.includes("already have the highest bid")) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: error.message,
-      });
-    }
-
-    return sendResponse({
-      res,
-      statusCode: 400,
-      success: false,
-      message: error.message || "Failed to create bid",
-      errors: error,
-    });
+    next(error);
   }
 };
 
-export const getAllBid = async (req: Request, res: Response) => {
+export const getAllBid = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const auctionId = req.params.auctionId as string;
     const userId = (req as any).user?.id as string | undefined;
     const role = (req as any).userRole as string | undefined;
 
     if (!auctionId) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Auction ID is required",
-      });
+      const err: any = new Error("Auction ID is required");
+      err.statusCode = 400;
+      throw err;
     }
 
     const bids = await getAllBidsByAuctionService(auctionId, userId as string, role);
@@ -151,63 +95,29 @@ export const getAllBid = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     if (error.message === "Auction not found" || error.message === "Inventory not found") {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: error.message,
-      });
+      error.statusCode = 404;
+    } else if (error.message?.includes("not authorized")) {
+      error.statusCode = 403;
     }
-
-    if (error.message?.includes("not authorized")) {
-      return sendResponse({
-        res,
-        statusCode: 403,
-        success: false,
-        message: "You are not authorized to view bids for this inventory",
-      });
-    }
-
-    if (error.message?.includes("not authorized")) {
-      return sendResponse({
-        res,
-        statusCode: 403,
-        success: false,
-        message: "You are not authorized to view bids for this inventory",
-      });
-    }
-
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to get bids",
-      errors: error?.message ?? "Something went wrong",
-    });
+    next(error);
   }
 };
 
-export const getSellerBid = async (req: Request, res: Response) => {
+export const getSellerBid = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const auctionId = req.params.auctionId as string;
     const buyerId = (req as any).user?.id as string | undefined;
 
     if (!auctionId) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Auction ID is required",
-      });
+      const err: any = new Error("Auction ID is required");
+      err.statusCode = 400;
+      throw err;
     }
 
     if (!buyerId) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Unauthorized",
-      });
+      const err: any = new Error("Unauthorized");
+      err.statusCode = 401;
+      throw err;
     }
 
     const bid = await getMyBidByAuctionService(auctionId, buyerId);
@@ -221,25 +131,13 @@ export const getSellerBid = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     if (error.message === "Auction not found") {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: "Auction not found",
-      });
+      error.statusCode = 404;
     }
-
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to get your bid",
-      errors: error?.message ?? "Something went wrong",
-    });
+    next(error);
   }
 };
 
-export const updateBidStatus = async (req: Request, res: Response) => {
+export const updateBidStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const bidId = req.params.bidId as string;
     const { status } = req.body;
@@ -247,21 +145,15 @@ export const updateBidStatus = async (req: Request, res: Response) => {
     const role = (req as any).userRole as "admin" | "user" | undefined;
 
     if (!bidId) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Bid ID is required",
-      });
+      const err: any = new Error("Bid ID is required");
+      err.statusCode = 400;
+      throw err;
     }
 
     if (!status || !["ACCEPTED", "REJECTED", "EXPIRED"].includes(status)) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Status is required and must be ACCEPTED, REJECTED, or EXPIRED",
-      });
+      const err: any = new Error("Status is required and must be ACCEPTED, REJECTED, or EXPIRED");
+      err.statusCode = 400;
+      throw err;
     }
 
     const updatedBid = await updateBidStatusService(
@@ -279,13 +171,13 @@ export const updateBidStatus = async (req: Request, res: Response) => {
         notifyDealCreated(deal).catch((err) =>
           console.error("Deal notification failed:", err)
         );
-        
+
         return sendResponse({
           res,
           statusCode: 200,
           success: true,
           message: `Bid ${status.toLowerCase()} successfully`,
-          data: {bidId, status, deal},
+          data: { bidId, status, deal },
         });
       } catch (dealError: any) {
         // Log but don't fail the bid status update response
@@ -301,66 +193,15 @@ export const updateBidStatus = async (req: Request, res: Response) => {
       data: updatedBid,
     });
   } catch (error: any) {
-    if (error.message === "Bid not found") {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: "Bid not found",
-      });
+    if (error.message === "Bid not found" || error.message === "Inventory not found") {
+      error.statusCode = 404;
+    } else if (error.message === "You are not authorized to update this bid") {
+      error.statusCode = 403;
+    } else if (error.message === "Bid is not in SUBMITTED status and cannot be updated" ||
+      error.message === "Another bid has already been accepted for this inventory" ||
+      error.message === "Only the highest bid can be accepted for this auction") {
+      error.statusCode = 400;
     }
-
-    if (error.message === "Inventory not found") {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: "Inventory not found",
-      });
-    }
-
-    if (error.message === "Bid is not in SUBMITTED status and cannot be updated") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Bid is not in SUBMITTED status and cannot be updated",
-      });
-    }
-
-    if (error.message === "You are not authorized to update this bid") {
-      return sendResponse({
-        res,
-        statusCode: 403,
-        success: false,
-        message: "You are not authorized to update this bid. Only admin or inventory owner can update bid status.",
-      });
-    }
-
-    if (error.message === "Another bid has already been accepted for this inventory") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Another bid has already been accepted for this inventory",
-      });
-    }
-
-    if (error.message === "Only the highest bid can be accepted for this auction") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Only the highest bid can be accepted for this auction",
-      });
-    }
-
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to update bid status",
-      errors: error?.message ?? "Something went wrong",
-    });
+    next(error);
   }
 }

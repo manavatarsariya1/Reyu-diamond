@@ -1,11 +1,11 @@
-import type { Response } from "express";
+import type { Response, NextFunction } from "express";
 import type { AuthRequest } from "../middlewares/auth.middleware.js";
 import * as chatService from "../services/chat.service.js";
 import sendResponse from "../utils/api.response.js";
 
-export const createConversation = async (req: AuthRequest, res: Response) => {
+export const createConversation = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { auctionId, participants } = req.body;
+    const { auctionId, inventoryId, participants } = req.body;
     const userId = req.user?.id;
 
     const set = new Set(participants as string[]);
@@ -13,7 +13,8 @@ export const createConversation = async (req: AuthRequest, res: Response) => {
 
     const conversation = await chatService.createConversation(
       Array.from(set),
-      auctionId
+      (auctionId || inventoryId) as string,
+      auctionId ? "Auction" : "Inventory"
     );
 
     return sendResponse({
@@ -24,17 +25,11 @@ export const createConversation = async (req: AuthRequest, res: Response) => {
       data: conversation,
     });
   } catch (error: any) {
-    return sendResponse({
-      res,
-      statusCode: error.statusCode || 500,
-      success: false,
-      message: error.message,
-      data: error.data || null,
-    });
+    next(error);
   }
 };
 
-export const getUserConversations = async (req: AuthRequest, res: Response) => {
+export const getUserConversations = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.id;
 
@@ -50,16 +45,11 @@ export const getUserConversations = async (req: AuthRequest, res: Response) => {
       data: conversations,
     });
   } catch (error: any) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
-export const markAsRead = async (req: AuthRequest, res: Response) => {
+export const markAsRead = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { conversationId } = req.params;
     const userId = req.user?.id;
@@ -73,11 +63,6 @@ export const markAsRead = async (req: AuthRequest, res: Response) => {
       message: "Marked as read",
     });
   } catch (error: any) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
