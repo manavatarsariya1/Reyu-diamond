@@ -21,15 +21,20 @@ interface KycState {
 
   submit: AsyncState;
   fetch: AsyncState;
-  update: AsyncState;
+  fetchStatus: AsyncState & { kycStatus: KycData["status"] | null; rejectionReason?: string };
 }
 
 const initialState: KycState = {
   kyc: null,
-
   submit: { status: "idle", error: null, message: null },
   fetch: { status: "idle", error: null, message: null },
-  update: { status: "idle", error: null, message: null },
+  fetchStatus: {
+    status: "idle",
+    error: null,
+    message: null,
+    kycStatus: null,
+    rejectionReason: undefined
+  },
 };
 
 const kycSlice = createSlice({
@@ -67,20 +72,18 @@ const kycSlice = createSlice({
       state.fetch.error = action.payload;
     },
 
-    // UPDATE KYC
-    updateKycRequested(state) {
-      state.update.status = "loading";
-      state.update.error = null;
-      state.update.message = null;
+    fetchKycStatusRequested(state, action: PayloadAction<string>) {  // add PayloadAction<string>
+      state.fetchStatus.status = "loading";
+      state.fetchStatus.error = null;
     },
-    updateKycSucceeded(state, action: PayloadAction<{ kyc: KycData; message: string }>) {
-      state.update.status = "success";
-      state.update.message = action.payload.message;
-      state.kyc = action.payload.kyc;
+    fetchKycStatusSucceeded(state, action: PayloadAction<{ status: KycData["status"]; rejectionReason?: string }>) {
+      state.fetchStatus.status = "success";
+      state.fetchStatus.kycStatus = action.payload.status;
+      state.fetchStatus.rejectionReason = action.payload.rejectionReason;
     },
-    updateKycFailed(state, action: PayloadAction<ApiError>) {
-      state.update.status = "error";
-      state.update.error = action.payload;
+    fetchKycStatusFailed(state, action: PayloadAction<ApiError>) {
+      state.fetchStatus.status = "error";
+      state.fetchStatus.error = action.payload;
     },
 
     // CLEAR STATES
@@ -92,8 +95,8 @@ const kycSlice = createSlice({
       state.fetch = { status: "idle", error: null, message: null };
     },
 
-    clearUpdateState(state) {
-      state.update = { status: "idle", error: null, message: null };
+    clearfetchKycState(state) {
+      state.fetchStatus = { status: "idle", error: null, message: null, kycStatus: null, rejectionReason: undefined }
     },
 
     // RESET KYC
@@ -110,12 +113,12 @@ export const {
   fetchKycRequested,
   fetchKycSucceeded,
   fetchKycFailed,
-  updateKycRequested,
-  updateKycSucceeded,
-  updateKycFailed,
+  fetchKycStatusRequested,
+  fetchKycStatusSucceeded,
+  fetchKycStatusFailed,
   clearSubmitState,
   clearFetchState,
-  clearUpdateState,
+  clearfetchKycState,
   resetKyc,
 } = kycSlice.actions;
 

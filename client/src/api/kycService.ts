@@ -6,8 +6,10 @@ export interface KycData {
   id: string;
   fullName: string;
   documentNumber: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "NOT_SUBMITTED";
+  rejectionReason?: string;
 }
+
 
 export interface SubmitKycPayload {
   firstName: string;
@@ -78,20 +80,11 @@ const res = await api.post("/kyc/submit", form, {
   return res.data;
 };
 
-export const fetchKyc = async () => {
-  const { data } = await api.get("/kyc");
-  return data;
+export const fetchKycStatus = async (userId: string) => {
+  const token = JSON.parse(localStorage.getItem("token") || "\"\"");
+  const res = await api.get(`/kyc/${userId}`, {  // ← don't destructure
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  console.log(res.data, "datatatata");
+  return res.data; // ← return full axios response data (your sendResponse wrapper)
 };
-
-// export const updateKyc = async (payload: SubmitKycPayload) => {
-//   const formData = new FormData();
-//   formData.append("fullName", payload.fullName);
-//   formData.append("documentNumber", payload.documentNumber);
-//   formData.append("documentFile", payload.documentFile);
-
-//   const { data } = await api.put("/kyc/update", formData, {
-//     headers: { "Content-Type": "multipart/form-data" },
-//   });
-
-//   return data;
-// };

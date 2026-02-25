@@ -1,6 +1,6 @@
 import type { DiamondPreference } from "@/types/preference";
 import { Button } from "@/components/ui/button";
-import { Edit2, Trash2, ArrowRight, Diamond, DollarSign, Scale, Hexagon, Palette, Eye, Award } from "lucide-react";
+import { Edit2, Trash2, ArrowRight, Diamond, DollarSign, Scale, Hexagon, Palette, Eye, Award, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface DiamondPreferenceCardProps {
@@ -9,149 +9,103 @@ interface DiamondPreferenceCardProps {
 }
 
 export function DiamondPreferenceCard({ preference, onDelete }: DiamondPreferenceCardProps) {
-    // Helper to format currency
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            maximumFractionDigits: 0,
-        }).format(amount);
-    };
+    const formatCurrency = (amount: number) =>
+        new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
 
     return (
         <div className="group relative bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col h-full">
             {/* Top Gradient Accent */}
             <div className="h-2 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
 
-            <div className="p-6 flex-grow flex flex-col gap-6">
+            <div className="p-6 flex-grow flex flex-col gap-5">
                 {/* Header */}
                 <div className="flex justify-between items-start">
                     <div>
                         <div className="text-xs font-medium text-indigo-500 uppercase tracking-wider mb-1">
-                            Saved Preference
+                            Saved Requirement
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 leading-tight">
-                            {preference.name || "Untitled Preference"}
+                        <h3 className="text-lg font-bold text-gray-900 leading-tight capitalize">
+                            {preference.shape} Diamond
                         </h3>
+                        <div className="flex items-center gap-1 mt-1 text-gray-400 text-xs">
+                            <MapPin className="w-3 h-3" />
+                            <span>{preference.location}</span>
+                        </div>
                     </div>
                     <div className="p-2 bg-indigo-50 rounded-full text-indigo-600">
                         <Diamond className="w-5 h-5" />
                     </div>
                 </div>
 
-                {/* Body Content */}
-                <div className="space-y-5">
-                    {/* Carat & Budget Row */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                                <Scale className="w-3.5 h-3.5" />
-                                <span>Carat</span>
-                            </div>
-                            <div className="text-sm font-bold text-gray-900">
-                                {preference.minCarat} ct – {preference.maxCarat} ct
-                            </div>
+                <div className="h-px bg-gray-100" />
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                    {/* Carat */}
+                    <div className="bg-blue-50 rounded-xl p-3 space-y-1">
+                        <div className="flex items-center gap-1.5 text-blue-500 text-xs font-semibold uppercase tracking-wide">
+                            <Scale className="w-3.5 h-3.5" />
+                            <span>Carat</span>
                         </div>
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                                <DollarSign className="w-3.5 h-3.5" />
-                                <span>Budget</span>
-                            </div>
-                            <div className="text-sm font-bold text-gray-900">
-                                {formatCurrency(preference.minBudget)} – {formatCurrency(preference.maxBudget)}
-                            </div>
+                        <div className="text-xl font-bold text-gray-900">
+                            {preference.carat}
+                            <span className="text-xs font-normal text-gray-400 ml-1">ct</span>
                         </div>
                     </div>
 
-                    <div className="h-px bg-gray-100" />
-
-                    {/* Shapes */}
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                            <Hexagon className="w-3.5 h-3.5" />
-                            <span>Shapes</span>
+                    {/* Budget */}
+                    <div className="bg-green-50 rounded-xl p-3 space-y-1">
+                        <div className="flex items-center gap-1.5 text-green-600 text-xs font-semibold uppercase tracking-wide">
+                            <DollarSign className="w-3.5 h-3.5" />
+                            <span>Budget</span>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                            {preference.shapes && preference.shapes.length > 0 ? (
-                                preference.shapes.map((shape) => (
-                                    <span
-                                        key={shape}
-                                        className="px-2.5 py-1 bg-gray-50 text-gray-700 text-xs font-semibold rounded-full border border-gray-200"
-                                    >
-                                        {shape}
-                                    </span>
-                                ))
-                            ) : (
-                                <span className="text-xs text-gray-400 italic">Any Shape</span>
-                            )}
+                        <div className="text-xl font-bold text-gray-900">
+                            {formatCurrency(preference.budget)}
                         </div>
                     </div>
+                </div>
 
-                    {/* Colors & Clarity */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                                <Palette className="w-3.5 h-3.5" />
-                                <span>Color</span>
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                                {preference.colors && preference.colors.length > 0 ? (
-                                    preference.colors.map((color) => (
-                                        <span
-                                            key={color}
-                                            className="w-6 h-6 flex items-center justify-center bg-white text-gray-700 text-xs font-bold rounded-full border border-gray-200 shadow-sm"
-                                        >
-                                            {color}
-                                        </span>
-                                    ))
-                                ) : (
-                                    <span className="text-xs text-gray-400 italic">Any</span>
-                                )}
-                            </div>
+                <div className="h-px bg-gray-100" />
+
+                {/* Details Row */}
+                <div className="grid grid-cols-3 gap-3">
+                    {/* Color */}
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-1 text-gray-400 text-xs font-medium uppercase tracking-wide">
+                            <Palette className="w-3 h-3" />
+                            <span>Color</span>
                         </div>
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>Clarity</span>
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                                {preference.clarities && preference.clarities.length > 0 ? (
-                                    preference.clarities.map((clarity) => (
-                                        <span
-                                            key={clarity}
-                                            className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded shadow-sm border border-indigo-100"
-                                        >
-                                            {clarity}
-                                        </span>
-                                    ))
-                                ) : (
-                                    <span className="text-xs text-gray-400 italic">Any</span>
-                                )}
-                            </div>
-                        </div>
+                        <span className="inline-flex items-center justify-center w-8 h-8 bg-white text-gray-800 text-sm font-bold rounded-full border-2 border-gray-200 shadow-sm">
+                            {preference.color}
+                        </span>
                     </div>
 
-                    {/* Certification */}
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                            <Award className="w-3.5 h-3.5" />
-                            <span>Certification</span>
+                    {/* Clarity */}
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-1 text-gray-400 text-xs font-medium uppercase tracking-wide">
+                            <Eye className="w-3 h-3" />
+                            <span>Clarity</span>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                            {preference.certifications && preference.certifications.length > 0 ? (
-                                preference.certifications.map((cert) => (
-                                    <span
-                                        key={cert}
-                                        className="px-2.5 py-1 bg-amber-50 text-amber-800 text-xs font-bold rounded-md border border-amber-100"
-                                    >
-                                        {cert}
-                                    </span>
-                                ))
-                            ) : (
-                                <span className="text-xs text-gray-400 italic">Any</span>
-                            )}
-                        </div>
+                        <span className="inline-flex px-2 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-100">
+                            {preference.clarity}
+                        </span>
                     </div>
+
+                    {/* Lab */}
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-1 text-gray-400 text-xs font-medium uppercase tracking-wide">
+                            <Award className="w-3 h-3" />
+                            <span>Lab</span>
+                        </div>
+                        <span className="inline-flex px-2 py-1 bg-amber-50 text-amber-800 text-xs font-bold rounded-lg border border-amber-100">
+                            {preference.lab}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Created At */}
+                <div className="text-xs text-gray-400 mt-auto">
+                    Added {new Date(preference.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                 </div>
             </div>
 
@@ -162,9 +116,9 @@ export function DiamondPreferenceCard({ preference, onDelete }: DiamondPreferenc
                         variant="outline"
                         size="sm"
                         asChild
-                        className="h-8 px-3 text-xs bg-white text-gray-600 border-gray-200 hover:bg-white hover:text-indigo-600 hover:border-indigo-200 transition-colors"
+                        className="h-8 px-3 text-xs bg-white text-gray-600 border-gray-200 hover:text-indigo-600 hover:border-indigo-200 transition-colors"
                     >
-                        <Link to={`/preferences/edit/${preference.id}`}>
+                        <Link to={`/preferences/edit/${preference._id}`}>
                             <Edit2 className="w-3 h-3 mr-1.5" />
                             Edit
                         </Link>
@@ -172,7 +126,7 @@ export function DiamondPreferenceCard({ preference, onDelete }: DiamondPreferenc
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onDelete(preference.id)}
+                        onClick={() => onDelete(preference._id)}
                         className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                     >
                         <Trash2 className="w-3.5 h-3.5" />

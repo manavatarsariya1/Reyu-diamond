@@ -2,21 +2,22 @@ import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import createSagaMiddleware from "redux-saga";
 import authReducer from "../features/auth/auth.Slice"
 import kycReducer from "../features/kyc/kycSlice";
+import preferenceReducer from "../features/preference/preferenceSlice";
 
 
 import storage from "redux-persist/lib/storage";
 import type { PersistConfig } from 'redux-persist';
 
 import {
-  persistStore,
-  persistReducer,
-  FLUSH,
-  REHYDRATE,
-  PAUSE,
-  PERSIST,
-  PURGE,
-  REGISTER,
-//   PersistConfig,
+   persistStore,
+   persistReducer,
+   FLUSH,
+   REHYDRATE,
+   PAUSE,
+   PERSIST,
+   PURGE,
+   REGISTER,
+   //   PersistConfig,
 } from "redux-persist";
 
 import rootSaga from "./rootSaga";
@@ -30,21 +31,22 @@ const sagaMiddleware = createSagaMiddleware();
    2️⃣ Root reducer
    =============================== */
 const rootReducer = combineReducers({
-  auth: authReducer,
-  kyc : kycReducer
-//   products: productReducer,
-//   wishlist: wishlistReducer,
-//   refresh: refreshReducer,
-//   sync: syncReducer,
+   auth: authReducer,
+   kyc: kycReducer,
+   preference: preferenceReducer,
+   //   products: productReducer,
+   //   wishlist: wishlistReducer,
+   //   refresh: refreshReducer,
+   //   sync: syncReducer,
 });
 
 /* ===============================
    3️⃣ Persist config (typed)
    =============================== */
 const persistConfig: PersistConfig<RootReducerType> = {
-  key: "root",
-  storage,
-  whitelist: ["auth", "kyc"],
+   key: "root",
+   storage,
+   whitelist: ["auth", "kyc", "preference"],
 };
 
 /* ===============================
@@ -58,21 +60,21 @@ const persistedReducer = persistReducer(persistConfig, rootReducer);
    5️⃣ Store
    =============================== */
 export const store = configureStore({
-  reducer: persistedReducer,
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      thunk: false, // ❗ disable thunk when using saga
-      serializableCheck: {
-        ignoredActions: [
-          FLUSH,
-          REHYDRATE,
-          PAUSE,
-          PERSIST,
-          PURGE,
-          REGISTER,
-        ],
-      },
-    }).concat(sagaMiddleware),
+   reducer: persistedReducer,
+   middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({
+         thunk: false, // ❗ disable thunk when using saga
+         serializableCheck: {
+            ignoredActions: [
+               FLUSH,
+               REHYDRATE,
+               PAUSE,
+               PERSIST,
+               PURGE,
+               REGISTER,
+            ],
+         },
+      }).concat(sagaMiddleware),
 });
 
 /* ===============================

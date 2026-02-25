@@ -60,15 +60,14 @@ export enum DiamondCertification {
 }
 
 export interface DiamondPreference {
-    id: string;
-    name: string; // User-friendly name for the preference
-    shapes: DiamondShape[];
-    minCarat: number;
-    maxCarat: number;
-    colors: DiamondColor[];
-    clarities: DiamondClarity[];
-    certifications: DiamondCertification[];
-    minBudget: number;
-    maxBudget: number;
-    createdAt: string; // ISO String
+    _id: string;      // backend uses _id
+    // id?: string;      // optional alias
+    shape: DiamondShape;
+    carat: number;
+    color: DiamondColor;
+    clarity: DiamondClarity;
+    lab: DiamondCertification;
+    location: string;
+    budget: number;
+    createdAt: string;
 }

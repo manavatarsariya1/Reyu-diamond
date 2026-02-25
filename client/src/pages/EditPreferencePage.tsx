@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { updatePreferenceStart } from "@/features/preference/preferenceSlice";
+import type { RootState } from "@/app/store";
 import { PreferenceForm } from "@/components/preferences/PreferenceForm";
 import type { DiamondPreference } from "@/types/preference";
 import { toast } from "sonner";
@@ -7,52 +10,33 @@ import { toast } from "sonner";
 export default function EditPreferencePage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const { preferences, loading: reduxLoading } = useSelector((state: RootState) => state.preference);
     const [preference, setPreference] = useState<DiamondPreference | null>(null);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (!id) return;
-
-        const saved = localStorage.getItem("diamond_preferences");
-        if (saved) {
-            try {
-                const preferences: DiamondPreference[] = JSON.parse(saved);
-                const found = preferences.find(p => p.id === id);
-                if (found) {
-                    setPreference(found);
-                } else {
-                    toast.error("Preference not found");
-                    navigate("/preferences");
-                }
-            } catch (e) {
-                console.error("Failed to parse preferences", e);
-                toast.error("Error loading preference");
-            }
+        const found = preferences.find(p => p._id === id);
+        if (found) {
+            setPreference(found);
+        } else if (!reduxLoading) {
+            toast.error("Preference not found");
+            navigate("/preferences");
         }
-        setLoading(false);
-    }, [id, navigate]);
+    }, [id, preferences, reduxLoading, navigate]);
 
     const handleUpdate = (data: any) => {
-        if (!preference) return;
-
-        const saved = localStorage.getItem("diamond_preferences");
-        const preferences: DiamondPreference[] = saved ? JSON.parse(saved) : [];
-
-        const updatedPreferences = preferences.map(p =>
-            p.id === preference.id ? { ...p, ...data } : p
-        );
-
-        localStorage.setItem("diamond_preferences", JSON.stringify(updatedPreferences));
-        toast.success("Preference updated successfully");
+        if (!id) return;
+        dispatch(updatePreferenceStart({ id, payload: data }));
         navigate("/preferences");
     };
 
-    if (loading) {
-        return <div className="p-8 text-center">Loading...</div>;
+    if (reduxLoading && !preference) {
+        return <div className="p-8 text-center text-muted-foreground italic">Loading preference...</div>;
     }
 
     if (!preference) {
-        return null; // Should have redirected
+        return null;
     }
 
     return (

@@ -1,31 +1,26 @@
-import { useState, useEffect } from "react";
-import type { DiamondPreference } from "@/types/preference";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchMyRequirementsStart, deletePreferenceStart } from "@/features/preference/preferenceSlice";
+import type { RootState } from "@/app/store";
 import { PreferenceList } from "@/components/preferences/PreferenceList";
-import { toast } from "sonner";
 
 export default function PreferencesPage() {
-    const [preferences, setPreferences] = useState<DiamondPreference[]>([]);
+    const dispatch = useDispatch();
+    const { preferences, loading } = useSelector((state: RootState) => state.preference);
 
-    // Load from local storage on mount
     useEffect(() => {
-        const saved = localStorage.getItem("diamond_preferences");
-        if (saved) {
-            try {
-                setPreferences(JSON.parse(saved));
-            } catch (e) {
-                console.error("Failed to parse preferences", e);
-            }
-        }
-    }, []);
+        dispatch(fetchMyRequirementsStart());
+    }, [dispatch]);
 
     const handleDelete = (id: string) => {
         if (confirm("Are you sure you want to delete this preference?")) {
-            const updatedPreferences = preferences.filter((p) => p.id !== id);
-            setPreferences(updatedPreferences);
-            localStorage.setItem("diamond_preferences", JSON.stringify(updatedPreferences));
-            toast.success("Preference deleted");
+            dispatch(deletePreferenceStart(id));
         }
     };
+
+    if (loading && preferences.length === 0) {
+        return <div className="p-8 text-center text-muted-foreground italic">Loading your preferences...</div>;
+    }
 
     return (
         <div className="container mx-auto py-6">

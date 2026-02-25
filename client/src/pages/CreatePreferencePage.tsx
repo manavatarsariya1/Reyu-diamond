@@ -1,25 +1,14 @@
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { submitPreferenceStart } from "@/features/preference/preferenceSlice";
 import { PreferenceForm } from "@/components/preferences/PreferenceForm";
-import type { DiamondPreference } from "@/types/preference";
-import { toast } from "sonner";
 
 export default function CreatePreferencePage() {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
 
     const handleCreate = (data: any) => {
-        const newPref: DiamondPreference = {
-            ...data,
-            id: crypto.randomUUID(),
-            createdAt: new Date().toISOString(),
-        };
-
-        const saved = localStorage.getItem("diamond_preferences");
-        const preferences = saved ? JSON.parse(saved) : [];
-
-        const updatedPreferences = [...preferences, newPref];
-        localStorage.setItem("diamond_preferences", JSON.stringify(updatedPreferences));
-
-        toast.success("Preference created successfully");
+        dispatch(submitPreferenceStart(data));
         navigate("/preferences");
     };
 
