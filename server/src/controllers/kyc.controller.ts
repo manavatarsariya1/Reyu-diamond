@@ -12,6 +12,7 @@ import crypto from "crypto";
 
 export const submitKyc = async (req: Request, res: Response) => {
   try {
+    console.log("hello bhai from submitkyc controller")
     const userId = (req as any).user?.id as string | undefined;
     if (!userId) {
       return sendResponse({
@@ -33,32 +34,26 @@ export const submitKyc = async (req: Request, res: Response) => {
       });
     }
 
+    // ✅ PARSE JSON STRINGS FIRST
+    const parsedAddress = typeof req.body.address === 'string' 
+      ? JSON.parse(req.body.address) 
+      : req.body.address;
+
+    const parsedDocuments = typeof req.body.documents === 'string' 
+      ? JSON.parse(req.body.documents) 
+      : req.body.documents;
+
+    // ✅ NOW destructure with parsed data
     const {
       firstName,
       middleName,
       lastName,
       dob,
       phone,
-      address,
-      documents
-    } = req.body as {
-      firstName: string;
-      middleName?: string;
-      lastName: string;
-      dob: string;
-      phone: string;
-      address: {
-        residentialAddress: string;
-        city: string;
-        state: string;
-        pincode: string;
-        country: string;
-      };
-      documents: {
-        aadhaar: { aadhaarNumber: string };
-        pan: { panNumber: string };
-      };
-    };
+    } = req.body;
+
+    const address = parsedAddress;
+    const documents = parsedDocuments;
 
     const { residentialAddress, city, state, pincode, country } = address;
     const { aadhaarNumber } = documents.aadhaar;
@@ -136,4 +131,4 @@ export const submitKyc = async (req: Request, res: Response) => {
       errors: err?.message ?? "Something went wrong",
     });
   }
-};
+}; 
