@@ -1,6 +1,7 @@
 import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import createSagaMiddleware from "redux-saga";
 import authReducer from "../features/auth/auth.Slice"
+import kycReducer from "../features/kyc/kycSlice";
 
 
 import storage from "redux-persist/lib/storage";
@@ -30,6 +31,7 @@ const sagaMiddleware = createSagaMiddleware();
    =============================== */
 const rootReducer = combineReducers({
   auth: authReducer,
+  kyc : kycReducer
 //   products: productReducer,
 //   wishlist: wishlistReducer,
 //   refresh: refreshReducer,
@@ -42,7 +44,7 @@ const rootReducer = combineReducers({
 const persistConfig: PersistConfig<RootReducerType> = {
   key: "root",
   storage,
-  whitelist: ["auth"],
+  whitelist: ["auth", "kyc"],
 };
 
 /* ===============================

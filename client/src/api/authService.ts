@@ -132,7 +132,7 @@ export class AuthService {
         throw new Error(response.data.message || "OTP verification failed");
       }
 
-      const { user } = response.data.data;
+      const { user, token } = response.data.data;
 
       // const user = userData ;
 
@@ -145,7 +145,7 @@ export class AuthService {
       // };
 
       // Store user data after successful verification
-      // localStorage.setItem("currentUser", JSON.stringify(token));
+      localStorage.setItem("currentUser", JSON.stringify(token));
 
       return {
         user,
