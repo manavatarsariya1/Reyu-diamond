@@ -92,3 +92,14 @@ export const sendMailToAllAdmins = async (userId: string): Promise<void> => {
       )
   );
 };
+
+
+export const getKycStatusService = async (userId: string) => {
+  const kyc = await KYC.findOne({ userId }).select("status");
+
+  if (!kyc) {
+    return "NOT_SUBMITTED";
+  }
+
+  return kyc.status;
+};

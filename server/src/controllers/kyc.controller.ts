@@ -5,7 +5,8 @@ import { notifyAdminsForKyc } from "../services/notification.service.js";
 import {
   upsertKycForUser,
   sendMailToAllAdmins,
-  isVerifedService
+  isVerifedService,
+  getKycStatusService
 } from "../services/kyc.service.js";
 
 import crypto from "crypto";
@@ -117,3 +118,34 @@ export const submitKyc = async (req: Request, res: Response, next: NextFunction)
     next(err);
   }
 }; 
+
+
+
+export const getKycStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.params.userId;
+    console.log(userId)
+
+    if (!userId) {
+      const err: any = new Error("User ID is required");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const status = await getKycStatusService(userId);
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: "KYC status fetched successfully",
+      data: { status }, // ✅ only sending status
+    });
+  } catch (err) {
+    next(err);
+  }
+};
