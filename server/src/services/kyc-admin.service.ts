@@ -7,6 +7,12 @@ interface ReviewKycInput {
   rejectionReason?: string;
 }
 
+interface IGetAllKycParams {
+  page?: number;
+  limit?: number;
+  status?: KycStatus;
+}
+
 export const reviewKycService = async ({
   userId,
   status,
@@ -29,5 +35,37 @@ export const reviewKycService = async ({
   }
 
   return kyc;
+};
+
+export const getAllKycService = async ({
+  page = 1,
+  limit = 10,
+  status,
+}: IGetAllKycParams) => {
+  const query: any = {};
+
+  if (status) {
+    query.status = status;
+  }
+
+  const skip = (page - 1) * limit;
+
+  const kycRecords = await Kyc.find(query)
+    .populate("userId", "username email phone")
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  const total = await Kyc.countDocuments(query);
+
+  return {
+    kycRecords,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+    },
+  };
 };
 

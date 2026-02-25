@@ -44,20 +44,6 @@ export const loadUserRole = async (
   }
 };
 
-export const requireRole =
-  (...roles: string[]) =>
-  (req: any, res: Response, next: NextFunction) => {
-    if (!req.userRole || !roles.includes(req.userRole)) {
-      return sendResponse({
-        res,
-        statusCode: 403,
-        success: false,
-        message: "Access denied",
-      });
-    }
-    next();
-  };
-
 export const ownerOrAdmin = (
   model: mongoose.Model<any>,
   ownerField: string,
@@ -83,6 +69,98 @@ export const ownerOrAdmin = (
       }
 
       const resourceId = req.params?.[paramKey] as string | undefined;
+
+      if (!resourceId || !mongoose.Types.ObjectId.isValid(resourceId)) {
+        return sendResponse({
+          res,
+          statusCode: 400,
+          success: false,
+          message: "Invalid resource identifier",
+        });
+      }
+
+      const isNested = ownerField.includes(".");
+      const populateField = isNested ? ownerField.split(".")[0] : undefined;
+      const finalOwnerField = isNested ? ownerField.split(".")[1] : ownerField;
+
+      let query = model.findById(resourceId);
+
+      if (isNested && populateField) {
+        query = query.populate(populateField);
+      } else {
+        query = query.select(ownerField);
+      }
+
+      const resource = await query.lean();
+
+      if (!resource) {
+        return sendResponse({
+          res,
+          statusCode: 404,
+          success: false,
+          message: "Resource not found",
+        });
+      }
+
+      let ownerId;
+      if (isNested && populateField) {
+        // @ts-ignore
+        ownerId = resource[populateField]?.[finalOwnerField];
+      } else {
+        ownerId = resource[ownerField];
+      }
+
+      if (!ownerId) {
+        return sendResponse({
+          res,
+          statusCode: 403,
+          success: false,
+          message: "Ownership not defined",
+        });
+      }
+
+      if (ownerId.toString() !== userId) {
+        return sendResponse({
+          res,
+          statusCode: 403,
+          success: false,
+          message: "You are not Authorized to access this resource",
+        });
+      }
+
+      next();
+    } catch (error) {
+      return sendResponse({
+        res,
+        statusCode: 500,
+        success: false,
+        message: "Authorization failed",
+        errors: (error as Error).message ?? "Something went wrong",
+      });
+    }
+  };
+};
+
+export const owner = (
+  model: mongoose.Model<any>,
+  ownerField: string,
+  paramKey: string = "id"
+) => {
+  return async (req: any, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.id as string | undefined;
+      const role = req.userRole as string | undefined;
+
+      if (!userId) {
+        return sendResponse({
+          res,
+          statusCode: 401,
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      const resourceId = req.params?.[paramKey] || req.body?.[paramKey];
 
       if (!resourceId || !mongoose.Types.ObjectId.isValid(resourceId)) {
         return sendResponse({
@@ -138,4 +216,3 @@ export const ownerOrAdmin = (
     }
   };
 };
-

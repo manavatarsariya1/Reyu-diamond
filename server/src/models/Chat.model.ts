@@ -2,7 +2,8 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 
 export interface IChat extends Document {
     participants: mongoose.Types.ObjectId[];
-    auctionId: mongoose.Types.ObjectId;
+    contextId: mongoose.Types.ObjectId;
+    contextType: "Auction" | "Inventory";
     lastMessage?: mongoose.Types.ObjectId;
     unreadCounts: Map<string, number>;
     createdAt: Date;
@@ -18,10 +19,15 @@ const chatSchema = new mongoose.Schema<IChat>(
                 required: true,
             },
         ],
-        auctionId: {
+        contextId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Auction", // Assuming 'Auction' model exists
             required: true,
+            refPath: "contextType",
+        },
+        contextType: {
+            type: String,
+            required: true,
+            enum: ["Auction", "Inventory"],
         },
         lastMessage: {
             type: mongoose.Schema.Types.ObjectId,
@@ -38,7 +44,7 @@ const chatSchema = new mongoose.Schema<IChat>(
 
 // Index for faster queries
 chatSchema.index({ participants: 1 });
-chatSchema.index({ auctionId: 1 });
+chatSchema.index({ contextId: 1, contextType: 1 });
 
 const Chat: Model<IChat> = mongoose.model<IChat>("Chat", chatSchema);
 

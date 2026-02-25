@@ -1,8 +1,11 @@
 import stripe, { getStripeAccountParams, getAccountLinkParams } from "../utils/stripe.utility.js";
+import mongoose from "mongoose";
 import type { IUser } from "../models/User.model.js";
 import User from "../models/User.model.js";
 import Deal from "../models/Deal.model.js";
 import Escrow from "../models/Escrow.model.js";
+import { Auction } from "../models/Auction.model.js";
+import Inventory from "../models/Inventory.model.js";
 import type { Request } from "express";
 
 /**
@@ -171,6 +174,8 @@ export class StripeService {
     }
 
     async releaseEscrow(dealId: string) {
+        const isProduction = process.env.NODE_ENV === "production";
+
         // find escrow
         const escrow = await Escrow.findOne({ deal: dealId });
 
@@ -218,15 +223,57 @@ export class StripeService {
             },
         });
 
-        // update escrow
-        escrow.status = "RELEASED";
-        escrow.stripeTransferId = transfer.id;
-        await escrow.save();
+        if (isProduction) {
+            const session = await mongoose.startSession();
+            try {
+                session.startTransaction();
 
-        // update deal
-        await Deal.findByIdAndUpdate(dealId, {
-            status: "COMPLETED",
-        });
+                // update escrow
+                escrow.status = "RELEASED";
+                escrow.stripeTransferId = transfer.id;
+                await escrow.save({ session });
+
+                // update deal
+                const startDeal = await Deal.findByIdAndUpdate(dealId, {
+                    status: "COMPLETED",
+                }, { session });
+
+                if (startDeal) {
+                    const auction = await Auction.findById(startDeal.auctionId).session(session);
+                    if (auction) {
+                        await Inventory.findByIdAndUpdate(auction.inventoryId, {
+                            status: "SOLD",
+                        }, { session });
+                    }
+                }
+
+                await session.commitTransaction();
+            } catch (error) {
+                await session.abortTransaction();
+                throw error;
+            } finally {
+                session.endSession();
+            }
+        } else {
+            // update escrow
+            escrow.status = "RELEASED";
+            escrow.stripeTransferId = transfer.id;
+            await escrow.save();
+
+            // update deal
+            const startDeal = await Deal.findByIdAndUpdate(dealId, {
+                status: "COMPLETED",
+            });
+
+            if (startDeal) {
+                const auction = await Auction.findById(startDeal.auctionId);
+                if (auction) {
+                    await Inventory.findByIdAndUpdate(auction.inventoryId, {
+                        status: "SOLD",
+                    });
+                }
+            }
+        }
 
         return {
             transferId: transfer.id,

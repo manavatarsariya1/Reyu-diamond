@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import sendToken from "../services/token.service.js";
 import {
   registerUser,
@@ -12,8 +12,9 @@ import {
   sanitizeUser,
 } from "../services/auth.service.js";
 import sendResponse from "../utils/api.response.js";
+import { logService } from "../services/log.service.js";
 
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { username, email, password, fcmToken } = req.body;
 
@@ -34,17 +35,23 @@ export const register = async (req: Request, res: Response) => {
         "User registered successfully. Please verify your email using the OTP sent to your email address.",
     });
   } catch (err: any) {
-    return sendResponse({
-      res,
-      statusCode: 400,
-      success: false,
-      message: "Failed to register user",
-      errors: err.message || "Something went wrong",
+    await logService.createSystemLog({
+      eventType: "AUTH_FAILURE",
+      severity: "WARNING",
+      message: `User registration failed for email: ${req.body.email}. Reason: ${err.message}`,
+      meta: {
+        email: req.body.email,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+        error: err.message
+      }
     });
+    err.statusCode = 400;
+    next(err);
   }
 };
 
-export const verifyOtp = async (req: Request, res: Response) => {
+export const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, otp } = req.body;
 
@@ -68,51 +75,26 @@ export const verifyOtp = async (req: Request, res: Response) => {
       message: "Email verified successfully.",
       data: {
         token,
-        user: sanitizeUser(user)  
+        user: sanitizeUser(user)
       },
     });
   } catch (err: any) {
     if (err.message === "User not found") {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: "User not found",
-      });
+      err.statusCode = 404;
+    } else if (err.message === "Invalid or expired OTP") {
+      err.statusCode = 400;
     }
-
-    if (err.message === "Invalid or expired OTP") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Invalid or expired OTP",
-      });
-    }
-
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "OTP verification failed",
-      errors: (err as any).message ?? "Something went wrong",
-    });
+    next(err);
   }
 };
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password, fcmToken } = req.body;
     const user = await loginUser({ email, password });
 
     if (user.accountStatus === "DEACTIVE") {
-      return sendResponse({
-        res,
-        statusCode: 403,
-        success: false,
-        message: "Account Deactivated",
-        errors: "Your account has been deactivated. Please contact support.",
-      });
+      return next(Object.assign(new Error("Account Deactivated"), { statusCode: 403, errors: "Your account has been deactivated. Please contact support." }));
     }
 
     if (fcmToken) {
@@ -129,12 +111,12 @@ export const login = async (req: Request, res: Response) => {
       message: "Login Successful",
       data: {
         token,
-        user:sanitizeUser(user) 
+        user: sanitizeUser(user)
       },
     });
   } catch (err: any) {
     console.log(err);
-    
+
     if (err.message === "Invalid credentials") {
       return sendResponse({
         res,
@@ -144,7 +126,7 @@ export const login = async (req: Request, res: Response) => {
         errors: "Invalid email or password",
       });
     }
-    
+
     if (err.message === "Please verify your email first") {
       return sendResponse({
         res,
@@ -155,6 +137,17 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
+    await logService.createSystemLog({
+      eventType: "AUTH_FAILURE",
+      severity: "WARNING",
+      message: `Login failed for email: ${req.body.email}. Reason: ${err.message}`,
+      meta: {
+        email: req.body.email,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+        error: err.message
+      }
+    });
 
     return sendResponse({
       res,
@@ -162,11 +155,18 @@ export const login = async (req: Request, res: Response) => {
       success: false,
       message: "Login Failed",
       errors: err?.message ?? "Invalid email or password",
-    });
+    })
+
+    // Log the system event
+
+    if (err.message === "Please verify your email first" || err.message === "Invalid credentials") {
+      err.statusCode = 400;
+    }
+    next(err);
   }
 };
 
-export const logout = (_req: Request, res: Response) => {
+export const logout = (_req: Request, res: Response, next: NextFunction) => {
   try {
     return sendResponse({
       res,
@@ -175,37 +175,23 @@ export const logout = (_req: Request, res: Response) => {
       message: "Logged Out Successfully",
     });
   } catch (err) {
-    return sendResponse({
-      res,
-      statusCode: 400,
-      success: false,
-      message: "Logout Failed",
-      errors: "Something went wrong",
-    });
+    next(err);
   }
 };
 
-export const getProfile = async (req: Request, res: Response) => {
+export const getProfile = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = (req as any).user?.id as string | undefined;
+    const userId = (req as any).user?.id as string;
     if (!userId) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Not authorized",
-      });
+      return next(Object.assign(new Error("Not authorized"), { statusCode: 401 }));
     }
 
     const user = await getUserById(userId);
 
     if (!user) {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: "User not found",
-      });
+      const err: any = new Error("User not found");
+      err.statusCode = 404;
+      throw err;
     }
 
     return sendResponse({
@@ -216,26 +202,17 @@ export const getProfile = async (req: Request, res: Response) => {
       data: user,
     });
   } catch (err: any) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to fetch user profile",
-      errors: err?.message ?? "Something went wrong",
-    });
+    next(err);
   }
 };
 
-export const upadteUserProfile = async (req: Request, res: Response) => {
+export const upadteUserProfile = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.id as string | undefined;
     if (!userId) {
-      return sendResponse({
-        res,
-        statusCode: 401,
-        success: false,
-        message: "Not authorized",
-      });
+      const err: any = new Error("Not authorized");
+      err.statusCode = 401;
+      throw err;
     }
 
     const { username, fcmToken } = req.body;
@@ -250,27 +227,18 @@ export const upadteUserProfile = async (req: Request, res: Response) => {
       data: user,
     });
   } catch (err: any) {
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to update user profile",
-      errors: err?.message ?? "Something went wrong",
-    });
+    next(err);
   }
 };
 
-export const resendOtp = async (req: Request, res: Response) => {
+export const resendOtp = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email } = req.body;
 
     if (!email) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Email is required",
-      });
+      const err: any = new Error("Email is required");
+      err.statusCode = 400;
+      throw err;
     }
 
     await resendOtpService(email);
@@ -283,44 +251,22 @@ export const resendOtp = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     if (err.message === "User not found") {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: "User not found",
-      });
+      err.statusCode = 404;
+    } else if (err.message === "User is already verified") {
+      err.statusCode = 400;
     }
-
-    if (err.message === "User is already verified") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "User is already verified",
-      });
-    }
-
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to resend OTP",
-      errors: err?.message ?? "Something went wrong",
-    });
+    next(err);
   }
 };
 
-export const forgetPassword = async (req: Request, res: Response) => {
+export const forgetPassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email } = req.body;
 
     if (!email) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Email is required",
-      });
+      const err: any = new Error("Email is required");
+      err.statusCode = 400;
+      throw err;
     }
 
     await forgetPasswordService(email);
@@ -333,34 +279,20 @@ export const forgetPassword = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     if (err.message === "User not found") {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: "User not found",
-      });
+      err.statusCode = 404;
     }
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to send reset link",
-      errors: err?.message ?? "Something went wrong",
-    });
+    next(err);
   }
 };
 
-export const resetPassword = async (req: Request, res: Response) => {
+export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { token, newPassword } = req.body;
 
     if (!token) {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Reset token is required",
-      });
+      const err: any = new Error("Reset token is required");
+      err.statusCode = 400;
+      throw err;
     }
 
     await resetPasswordService(token, newPassword);
@@ -372,36 +304,11 @@ export const resetPassword = async (req: Request, res: Response) => {
       message: "Password has been reset successfully. You can now log in with your new password.",
     });
   } catch (err: any) {
-    if (err.message === "Invalid or expired reset link") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: "Invalid or expired reset link. Please request a new password reset.",
-      });
+    if (err.message === "Invalid or expired reset link" || err.message === "Password must be at least 6 characters") {
+      err.statusCode = 400;
+    } else if (err.message === "User not found") {
+      err.statusCode = 404;
     }
-    if (err.message === "Password must be at least 6 characters") {
-      return sendResponse({
-        res,
-        statusCode: 400,
-        success: false,
-        message: err.message,
-      });
-    }
-    if (err.message === "User not found") {
-      return sendResponse({
-        res,
-        statusCode: 404,
-        success: false,
-        message: "User not found",
-      });
-    }
-    return sendResponse({
-      res,
-      statusCode: 500,
-      success: false,
-      message: "Failed to reset password",
-      errors: err?.message ?? "Something went wrong",
-    });
+    next(err);
   }
 }; 

@@ -95,7 +95,7 @@ const dealSchema = new mongoose.Schema<IDeal>(
       min: 1,
     },
 
-    currency: { type: String, default: "INR" },
+    currency: { type: String, default: "USD" },
 
     status: {
       type: String,

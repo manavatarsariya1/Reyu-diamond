@@ -8,13 +8,18 @@ interface CreateBidInput {
   auctionId: string;
   buyerId: string;
   bidAmount: number;
+  role?: string | undefined;
 }
 
 export const createBidService = async ({
   auctionId,
   buyerId,
   bidAmount,
+  role
 }: CreateBidInput) => {
+  if (role === "admin") {
+    throw new Error("Admin is not allowed to bid");
+  }
   const isProduction = process.env.NODE_ENV === "production";
 
   // 1. Fetch auction
@@ -47,7 +52,7 @@ export const createBidService = async ({
     throw new Error("Inventory is not available for bidding");
   }
 
-  const currentPrice = auction.currentBid > 0 ? auction.currentBid : auction.basePrice;
+  const currentPrice = auction.highestBidPrice > 0 ? auction.highestBidPrice : auction.basePrice;
 
   if (bidAmount <= currentPrice) {
     throw new Error(
@@ -78,7 +83,7 @@ export const createBidService = async ({
           isHighestBid: true,
         },
         {
-          $set: { isHighestBid: false },
+          $set: { status: "REJECTED", isHighestBid: false },
         },
         { session }
       );
@@ -100,7 +105,7 @@ export const createBidService = async ({
       if (!createdBid) throw new Error("Failed to create bid");
 
       // Update Auction price and bids
-      auction.currentBid = bidAmount;
+      auction.highestBidPrice = bidAmount;
       auction.highestBidderId = new mongoose.Types.ObjectId(buyerId);
       auction.highestBidId = createdBid._id as mongoose.Types.ObjectId;
       auction.bidIds.push(createdBid._id as mongoose.Types.ObjectId);
@@ -111,20 +116,6 @@ export const createBidService = async ({
 
       await session.commitTransaction();
       session.endSession();
-
-      const bidObj = bid[0];
-
-      // Create conversation between buyer and seller
-      // inventory.sellerId is the owner of the item/auction
-      try {
-        await createConversation(
-          [buyerId, inventory.sellerId.toString()],
-          auctionId
-        );
-      } catch (chatError) {
-        console.error("Failed to create conversation after bid:", chatError);
-        // Don't fail the bid creation if chat creation fails, just log it
-      }
 
       return bid[0];
     } catch (error) {
@@ -141,7 +132,7 @@ export const createBidService = async ({
         isHighestBid: true,
       },
       {
-        $set: { isHighestBid: false },
+        $set: { status: "REJECTED", isHighestBid: false },
       }
     );
 
@@ -155,7 +146,7 @@ export const createBidService = async ({
     });
 
     // Update Auction price and bids
-    auction.currentBid = bidAmount;
+    auction.highestBidPrice = bidAmount;
     auction.highestBidderId = new mongoose.Types.ObjectId(buyerId);
     auction.highestBidId = bid._id as mongoose.Types.ObjectId;
     auction.bidIds.push(bid._id as mongoose.Types.ObjectId);
@@ -164,16 +155,6 @@ export const createBidService = async ({
     // Update Inventory price
     inventory.currentBiddingPrice = bidAmount;
     await inventory.save();
-
-    // Create conversation between buyer and seller
-    try {
-      await createConversation(
-        [buyerId, inventory.sellerId.toString()],
-        auctionId
-      );
-    } catch (chatError) {
-      console.error("Failed to create conversation after bid:", chatError);
-    }
 
     return bid;
   }
@@ -286,6 +267,10 @@ export const updateBidStatusService = async (
     throw new Error("Auction not found");
   }
 
+  if (auction.recipient.toString() !== userId) {
+    throw new Error("You are not Auction Owner, You are not authorized to ACCEPT/REJECT this bid");
+  }
+
   const inventory = await Inventory.findById(auction.inventoryId) as any;
   if (!inventory) {
     throw new Error("Inventory not found");
@@ -308,6 +293,10 @@ export const updateBidStatusService = async (
 
     if (existingAcceptedBid && existingAcceptedBid._id.toString() !== bidId) {
       throw new Error("Another bid has already been accepted for this inventory");
+    }
+
+    if (!bid.isHighestBid) {
+      throw new Error("Only the highest bid can be accepted for this auction");
     }
   }
 
@@ -335,9 +324,20 @@ export const updateBidStatusService = async (
           { $set: { status: "REJECTED" } },
           { session }
         );
-        inventory.status = "ON_MEMO";
-        inventory.locked = true;
-        await inventory.save({ session });
+
+        await inventory.updateOne({
+          $set: {
+            status: "ON_MEMO",
+            locked: true,
+          },
+        }, { session });
+
+        await auction.updateOne({
+          $set: {
+            status: "CLOSED",
+            buyerId: bid.buyerId,
+          },
+        }, { session });
       }
 
       await session.commitTransaction();
@@ -367,9 +367,19 @@ export const updateBidStatusService = async (
         },
         { $set: { status: "REJECTED" } }
       );
-      inventory.status = "ON_MEMO";
-      inventory.locked = true;
-      await inventory.save();
+      await inventory.updateOne({
+        $set: {
+          status: "ON_MEMO",
+          locked: true,
+        },
+      });
+
+      await auction.updateOne({
+        $set: {
+          status: "CLOSED",
+          buyerId: bid.buyerId,
+        },
+      });
     }
 
     return updatedBid;
