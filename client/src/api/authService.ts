@@ -59,7 +59,7 @@ export class AuthService {
       //   isVerified: userData.user.isVerified,
       // };
 
-      // localStorage.setItem("currentUser", JSON.stringify(user));
+      // localStorage.setItem("token", JSON.stringify(user));
       localStorage.setItem("token", JSON.stringify(token));
 
       return user;
@@ -145,7 +145,7 @@ export class AuthService {
       // };
 
       // Store user data after successful verification
-      localStorage.setItem("currentUser", JSON.stringify(token));
+      localStorage.setItem("token", JSON.stringify(token));
 
       return {
         user,
@@ -177,17 +177,17 @@ export class AuthService {
       // Call backend to clear cookie
       await api.post("/auth/logout");
 
-      localStorage.removeItem("currentUser");
+      localStorage.removeItem("token");
     } catch (error: any) {
       // Even if backend logout fails, clear local storage
-      localStorage.removeItem("currentUser");
+      localStorage.removeItem("token");
       throw new Error(error.response?.data?.message || "Logout failed");
     }
   }
 
   // GET CURRENT USER
   getCurrentUser(): User | null {
-    const user = localStorage.getItem("currentUser");
+    const user = localStorage.getItem("token");
     return user ? JSON.parse(user) : null;
   }
 

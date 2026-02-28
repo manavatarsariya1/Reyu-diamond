@@ -16,7 +16,7 @@ const Kyc: React.FC = () => {
   const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
   const dispatch = useDispatch();
 
-  const userId = useSelector((state: RootState) => state.auth.user?._id);
+  const userId = useSelector((state: RootState) => state.auth.user?.id || (state.auth.user as any)?._id);
   const userName = useSelector((state: RootState) => state.auth.user?.username);
   const userEmail = useSelector((state: RootState) => state.auth.user?.email);
   const kycStatus = useSelector((state: RootState) => state.kyc?.fetchStatus?.kycStatus);

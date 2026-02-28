@@ -6,10 +6,10 @@ interface BidStatusBadgeProps {
     status: BidStatus;
     className?: string;
 }
-
+// ["SUBMITTED", "ACCEPTED", "REJECTED", "EXPIRED"],
 export function BidStatusBadge({ status, className }: BidStatusBadgeProps) {
     const config = {
-        [BidStatus.PENDING]: {
+        [BidStatus.SUBMITTED]: {
             label: "Pending",
             icon: Clock,
             style: "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -24,13 +24,13 @@ export function BidStatusBadge({ status, className }: BidStatusBadgeProps) {
             icon: XCircle,
             style: "bg-red-100 text-red-800 border-red-200",
         },
-        [BidStatus.CANCELLED]: {
-            label: "Cancelled",
-            icon: Ban,
-            style: "bg-gray-100 text-gray-800 border-gray-200",
-        },
-        [BidStatus.OUTBID]: {
-            label: "Outbid",
+        // [BidStatus.CANCELLED]: {
+        //     label: "Cancelled",
+        //     icon: Ban,
+        //     style: "bg-gray-100 text-gray-800 border-gray-200",
+        // },
+        [BidStatus.EXPIRED]: {
+            label: "Expired",
             icon: ArrowUpCircle,
             style: "bg-orange-100 text-orange-800 border-orange-200",
         },

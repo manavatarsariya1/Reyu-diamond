@@ -1,39 +1,39 @@
-import type { DiamondShape, DiamondColor, DiamondClarity, DiamondCertification } from "./preference";
+export const InventoryStatus = {
+    AVAILABLE: 'AVAILABLE',
+    NOT_AVAILABLE: 'NOT_AVAILABLE',
+    LISTED: 'LISTED',
+    SOLD: 'SOLD',
+    ON_MEMO: 'ON_MEMO',
+    LOCKED: 'LOCKED'
+} as const;
 
-export enum InventoryStatus {
-    AVAILABLE = 'Available',
-    LISTED = 'Listed',
-    LOCKED = 'Locked',
-    COMPLETED = 'Sold'
-}
+export type InventoryStatus = typeof InventoryStatus[keyof typeof InventoryStatus];
 
 export type InventoryItem = {
-    id: string;
+    _id: string; // Map to MongoDB ObjectId
     sellerId: string;
+    title: string;
+    description?: string;
+    barcode: string;
 
     // Specs
-    shape: DiamondShape;
     carat: number;
-    color: DiamondColor;
-    clarity: DiamondClarity;
-    certification: DiamondCertification;
-    reportNumber?: string;
+    cut: "EXCELLENT" | "VERY_GOOD" | "GOOD" | "FAIR" | "POOR";
+    color: "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M";
+    clarity: "FL" | "IF" | "VVS1" | "VVS2" | "VS1" | "VS2" | "SI1" | "SI2" | "I1";
+    shape: "ROUND" | "PRINCESS" | "CUSHION" | "EMERALD" | "OVAL" | "RADIANT" | "ASSCHER" | "MARQUISE" | "HEART" | "PEAR";
 
-    // Image
-    thumbnail?: string;
-    images?: string[];
+    lab: string;
+    location: string;
+    price: number;
+    currency: string;
 
     // Management
-    status: InventoryStatus;
-    barcode?: string;
-    sku?: string;
+    status: InventoryStatus | "LOCKED";
+    locked: boolean;
+    images: string[];
+    video?: string;
 
-    // Pricing (Internal)
-    costPrice?: number;
-    targetPrice?: number;
-
-    // Linking
-    listingId?: string;
     activeDealId?: string;
 
     createdAt: string;

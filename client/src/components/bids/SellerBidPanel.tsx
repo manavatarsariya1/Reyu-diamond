@@ -1,12 +1,11 @@
-import { useState } from "react";
-import  {  BidStatus } from "@/types/bid";
+
+import { BidStatus } from "@/types/bid";
 import type { Bid } from "@/types/bid";
-import {  ListingStatus } from "@/types/listing";
+import { ListingStatus } from "@/types/listing";
 import type { DiamondListing } from "@/types/listing";
 import { Button } from "@/components/ui/button";
 import { BidStatusBadge } from "./BidStatusBadge";
-import { Check, X, ShieldCheck, Lock } from "lucide-react";
-import { toast } from "sonner";
+import { Check, X, Lock } from "lucide-react";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -56,11 +55,11 @@ export function SellerBidPanel({ listing, bids, onAcceptBid, onRejectBid }: Sell
                     </div>
                 ) : (
                     bids.map((bid) => (
-                        <div key={bid.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                        <div key={bid._id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
                             <div className="flex flex-col gap-1">
                                 <div className="flex items-center gap-2">
                                     <span className="font-mono text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                                        {bid.bidderName}
+                                        {bid.buyerId?.username || bid.buyerId?.email || "Unknown Bidder"}
                                     </span>
                                     <span className="text-xs text-gray-400">
                                         {new Date(bid.createdAt).toLocaleDateString()}
@@ -68,20 +67,20 @@ export function SellerBidPanel({ listing, bids, onAcceptBid, onRejectBid }: Sell
                                 </div>
                                 <div className="flex items-baseline gap-2">
                                     <span className="text-lg font-bold text-gray-900">
-                                        {formatCurrency(bid.amount)}
+                                        {formatCurrency(bid.bidAmount)}
                                     </span>
-                                    {bid.note && (
+                                    {bid.notes && (
                                         <span className="text-xs text-gray-500 italic truncate max-w-[200px]">
-                                            "{bid.note}"
+                                            "{bid.notes}"
                                         </span>
                                     )}
                                 </div>
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <BidStatusBadge status={bid.status} />
+                                <BidStatusBadge status={bid?.status} />
 
-                                {!isLocked && bid.status === BidStatus.PENDING && (
+                                {!isLocked && bid.status === BidStatus.SUBMITTED && (
                                     <div className="flex gap-2">
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild>
@@ -93,13 +92,13 @@ export function SellerBidPanel({ listing, bids, onAcceptBid, onRejectBid }: Sell
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>Accept Bid?</AlertDialogTitle>
                                                     <AlertDialogDescription>
-                                                        This will accept the bid of <strong>{formatCurrency(bid.amount)}</strong> from {bid.bidderName}.
+                                                        This will accept the bid of <strong>{formatCurrency(bid.bidAmount)}</strong> from {bid.buyerId?.username || bid.buyerId?.email || "Unknown Bidder"}.
                                                         The listing will be locked and other pending bids will be automatically rejected.
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
                                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => onAcceptBid(bid.id)}>
+                                                    <AlertDialogAction onClick={() => onAcceptBid(bid._id)}>
                                                         Confirm Acceptance
                                                     </AlertDialogAction>
                                                 </AlertDialogFooter>
@@ -110,7 +109,7 @@ export function SellerBidPanel({ listing, bids, onAcceptBid, onRejectBid }: Sell
                                             size="sm"
                                             variant="outline"
                                             className="h-8 w-8 p-0 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 rounded-full"
-                                            onClick={() => onRejectBid(bid.id)}
+                                            onClick={() => onRejectBid(bid._id)}
                                         >
                                             <X className="w-4 h-4" />
                                         </Button>

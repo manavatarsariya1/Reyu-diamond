@@ -3,6 +3,9 @@ import createSagaMiddleware from "redux-saga";
 import authReducer from "../features/auth/auth.Slice"
 import kycReducer from "../features/kyc/kycSlice";
 import preferenceReducer from "../features/preference/preferenceSlice";
+import inventoryReducer from "../features/inventory/inventorySlice";
+import auctionReducer from "../features/auction/auctionSlice";
+import bidReducer from "../features/bid/bidSlice";
 
 
 import storage from "redux-persist/lib/storage";
@@ -34,6 +37,9 @@ const rootReducer = combineReducers({
    auth: authReducer,
    kyc: kycReducer,
    preference: preferenceReducer,
+   inventory: inventoryReducer,
+   auction: auctionReducer,
+   bid: bidReducer,
    //   products: productReducer,
    //   wishlist: wishlistReducer,
    //   refresh: refreshReducer,
@@ -46,7 +52,7 @@ const rootReducer = combineReducers({
 const persistConfig: PersistConfig<RootReducerType> = {
    key: "root",
    storage,
-   whitelist: ["auth", "kyc", "preference"],
+   whitelist: ["auth", "kyc", "preference", "inventory", "auction", "bid"], // We don't persist inventory data to avoid staleness, but it can be added here if desired.
 };
 
 /* ===============================

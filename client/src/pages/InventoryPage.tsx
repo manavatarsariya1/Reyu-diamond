@@ -1,85 +1,73 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { InventoryCard } from "@/components/inventory/InventoryCard";
 import { InventoryStats } from "@/components/inventory/InventoryStats";
 import { InventoryFilters } from "@/components/inventory/InventoryFilters";
 import type { InventoryItem } from "@/types/inventory";
 import { InventoryStatus } from "@/types/inventory";
-import { DiamondShape, DiamondColor, DiamondClarity, DiamondCertification } from "@/types/preference";
 import { Button } from "@/components/ui/button";
-import { QrCode } from "lucide-react";
+import { QrCode, Loader2 } from "lucide-react";
 import { BarcodeScannerModal } from "@/components/inventory/BarcodeScannerModal";
+import { AuctionForm } from "@/components/inventory/AuctionForm";
+import { useLayout } from "@/utils/Layoutcontext";
 
-// Mock Data
-const MOCK_INVENTORY: InventoryItem[] = [
-    {
-        id: "inv-1",
-        sellerId: "seller-1",
-        shape: DiamondShape.ROUND,
-        carat: 1.02,
-        color: DiamondColor.D,
-        clarity: DiamondClarity.VVS1,
-        certification: DiamondCertification.GIA,
-        status: InventoryStatus.AVAILABLE,
-        barcode: "DIA-001021",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    },
-    {
-        id: "inv-2",
-        sellerId: "seller-1",
-        shape: DiamondShape.OVAL,
-        carat: 2.15,
-        color: DiamondColor.G,
-        clarity: DiamondClarity.VS2,
-        certification: DiamondCertification.IGI,
-        status: InventoryStatus.LISTED,
-        listingId: "lst-123",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    },
-    {
-        id: "inv-3",
-        sellerId: "seller-1",
-        shape: DiamondShape.PRINCESS,
-        carat: 0.90,
-        color: DiamondColor.E,
-        clarity: DiamondClarity.SI1,
-        certification: DiamondCertification.GIA,
-        status: InventoryStatus.LOCKED,
-        activeDealId: "deal-456",
-        sku: "PR-90-E",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    }
-];
+// Redux
+import { fetchInventoriesStart } from "@/features/inventory/inventorySlice";
+import { fetchAuctionsStart } from "@/features/auction/auctionSlice";
+import type { RootState } from "@/app/store";
 
 export default function InventoryPage() {
-    const [items, setItems] = useState<InventoryItem[]>(MOCK_INVENTORY);
+    const dispatch = useDispatch();
+    const { items: inventoryItems, loading } = useSelector((state: RootState) => state.inventory);
+    const auctions = useSelector((state: RootState) => state.auction.items);
+    const currentUserId = useSelector((state: RootState) => state.auth.user?._id);
+    const { isCollapsed } = useLayout();
+
+    // Only ONE piece of state needed — the search string
+    const [searchQuery, setSearchQuery] = useState("");
     const [scannerOpen, setScannerOpen] = useState(false);
 
-    const handleSearch = (query: string) => {
-        // Simple client-side search mock
-        if (!query) {
-            setItems(MOCK_INVENTORY);
-            return;
-        }
-        const lower = query.toLowerCase();
-        setItems(MOCK_INVENTORY.filter(i =>
-            i.id.includes(lower) ||
-            i.barcode?.toLowerCase().includes(lower) ||
-            i.sku?.toLowerCase().includes(lower) ||
-            i.shape.toLowerCase().includes(lower)
-        ));
-    };
+    // Auction Modal State
+    const [auctionModalOpen, setAuctionModalOpen] = useState(false);
+    const [selectedAuctionItem, setSelectedAuctionItem] = useState<InventoryItem | null>(null);
 
-    const handleQuickScan = (code: string) => {
-        // Mock finding item by scan
-        const found = MOCK_INVENTORY.find(i => i.barcode === code);
-        if (found) {
-            setItems([found]); // Filter to just that item
-        } else {
-            // maybe show "Not found" or open add form
-        }
+    useEffect(() => {
+        dispatch(fetchInventoriesStart());
+        dispatch(fetchAuctionsStart());
+    }, [dispatch]);
+
+    // ── Global Auction constraints ───────────────────────
+    const userActiveAuction = useMemo(() => {
+        if (!currentUserId) return null;
+        return auctions.find(a => a.recipient === currentUserId && a.status === "ACTIVE");
+    }, [auctions, currentUserId]);
+
+    // ── Step 1: seller filter (derived, no state) ────────────────────────────
+    const myItems = useMemo(
+        () => currentUserId
+            ? inventoryItems.filter(i => i.sellerId === currentUserId)
+            : [],
+        [inventoryItems, currentUserId]
+    );
+
+    // ── Step 2: search filter (derived, no state) ────────────────────────────
+    const filteredItems = useMemo(() => {
+        if (!searchQuery) return myItems;
+        const lower = searchQuery.toLowerCase();
+        return myItems.filter(i =>
+            i._id.includes(lower) ||
+            i.barcode?.toLowerCase().includes(lower) ||
+            i.shape.toLowerCase().includes(lower)
+        );
+    }, [myItems, searchQuery]);
+
+    const handleSearch = (query: string) => setSearchQuery(query);
+
+    const handleQuickScan = (code: string) => setSearchQuery(code);
+
+    const handleOpenAuction = (item: InventoryItem) => {
+        setSelectedAuctionItem(item);
+        setAuctionModalOpen(true);
     };
 
     return (
@@ -96,24 +84,42 @@ export default function InventoryPage() {
             </div>
 
             <InventoryStats
-                total={MOCK_INVENTORY.length}
-                available={MOCK_INVENTORY.filter(i => i.status === InventoryStatus.AVAILABLE).length}
-                listed={MOCK_INVENTORY.filter(i => i.status === InventoryStatus.LISTED).length}
-                locked={MOCK_INVENTORY.filter(i => i.status === InventoryStatus.LOCKED).length}
+                total={myItems.length}
+                available={myItems.filter(i => i.status === InventoryStatus.AVAILABLE).length}
+                listed={myItems.filter(i => i.status === InventoryStatus.LISTED).length}
+                locked={myItems.filter(i => i.locked).length}
             />
 
             <InventoryFilters onSearch={handleSearch} />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {items.map(item => (
-                    <InventoryCard key={item.id} item={item} />
-                ))}
-            </div>
+            {loading ? (
+                <div className="flex justify-center items-center py-20 mt-6">
+                    <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                </div>
+            ) : (
+                <div className={
+                    isCollapsed
+                        ? "grid grid-cols-4 gap-4"
+                        : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"
+                }>
+                    {filteredItems.map(item => (
+                        <InventoryCard
+                            key={item._id}
+                            item={item}
+                            onAuction={handleOpenAuction}
+                            activeAuction={auctions.find(a => a.inventoryId === item._id && a.status === "ACTIVE")}
+                            hasActiveAuction={!!userActiveAuction}
+                        />
+                    ))}
+                </div>
+            )}
 
-            {items.length === 0 && (
+            {!loading && filteredItems.length === 0 && (
                 <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-200 mt-6">
                     <p className="text-gray-400 mb-2">No inventory items found</p>
-                    <Button variant="link">Clear Filters</Button>
+                    <Button variant="link" onClick={() => setSearchQuery("")}>
+                        Clear Filters
+                    </Button>
                 </div>
             )}
 
@@ -121,6 +127,12 @@ export default function InventoryPage() {
                 open={scannerOpen}
                 onOpenChange={setScannerOpen}
                 onScan={handleQuickScan}
+            />
+
+            <AuctionForm
+                isOpen={auctionModalOpen}
+                onOpenChange={setAuctionModalOpen}
+                inventoryItem={selectedAuctionItem}
             />
         </div>
     );

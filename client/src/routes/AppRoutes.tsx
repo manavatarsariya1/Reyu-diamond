@@ -31,6 +31,7 @@ import RateDealPage from '@/pages/RateDealPage';
 import ReputationPage from '@/pages/ReputationPage';
 import PaymentPage from '@/pages/PaymentPage';
 import EscrowDashboardPage from '@/pages/EscrowDashboardPage';
+import InventoryDetails from '@/components/inventory/InventoryDetails';
 
 
 
@@ -62,8 +63,8 @@ const AppRoutes = createBrowserRouter([
         path: "/verify-otp",
         element:
             // <PublicRoute>
-                <Verify />
-            // </PublicRoute>
+            <Verify />
+        // </PublicRoute>
     },
     {
         path: "/marketplace",
@@ -155,6 +156,14 @@ const AppRoutes = createBrowserRouter([
             {
                 path: "/inventory/add",
                 element: <AddInventoryPage />
+            },
+            {
+                path: "/inventory/edit/:id",
+                element: <AddInventoryPage /> // We will modify AddInventoryPage and InventoryForm to handle edit mode
+            },
+            {
+                path: "/inventory/:id",
+                element: <InventoryDetails />
             }
         ]
     },

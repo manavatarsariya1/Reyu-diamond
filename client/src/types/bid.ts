@@ -1,21 +1,22 @@
 export enum BidStatus {
-    PENDING = 'Pending',
-    ACCEPTED = 'Accepted',
-    REJECTED = 'Rejected',
-    CANCELLED = 'Cancelled',
-    OUTBID = 'Outbid',
+    SUBMITTED = 'SUBMITTED',
+    ACCEPTED = 'ACCEPTED',
+    REJECTED = 'REJECTED',
+    EXPIRED = 'EXPIRED',
 }
 
 export interface Bid {
-    id: string;
-    listingId: string;
-    bidderId: string;
-    bidderName: string; // Simplification or "Bidder #123"
-
-    amount: number;
-    note?: string;
-
+    _id: string;
+    auctionId: string | any; // Could be populated auction object
+    buyerId: string | any;   // Could be populated user object
+    bidAmount: number;
+    notes?: string;
     status: BidStatus;
     createdAt: string;
     updatedAt: string;
+    isHighestBid?: boolean;
+}
+
+export interface CreateBidPayload {
+    bidAmount: number;
 }

@@ -35,46 +35,46 @@ export interface SubmitKycPayload {
 
 export const submitKyc = async (payload: SubmitKycPayload) => {
 
- const form = new FormData();
+  const form = new FormData();
 
-form.append("firstName", payload.firstName);
-form.append("middleName", payload.middleName || "");
-form.append("lastName", payload.lastName);
-form.append("dob", payload.dob);
-form.append("phone", payload.phone);
+  form.append("firstName", payload.firstName);
+  form.append("middleName", payload.middleName || "");
+  form.append("lastName", payload.lastName);
+  form.append("dob", payload.dob);
+  form.append("phone", payload.phone);
 
-// address → nested JSON
-form.append(
-  "address",
-  JSON.stringify({
-    residentialAddress: payload.residentialAddress,
-    city: payload.city,
-    state: payload.state,
-    pincode: payload.pincode,
-    country: payload.country || "IN",
-  })
-);
+  // address → nested JSON
+  form.append(
+    "address",
+    JSON.stringify({
+      residentialAddress: payload.residentialAddress,
+      city: payload.city,
+      state: payload.state,
+      pincode: payload.pincode,
+      country: payload.country || "IN",
+    })
+  );
 
-// documents → nested JSON
-form.append(
-  "documents",
-  JSON.stringify({
-    aadhaar: { aadhaarNumber: payload.aadhaarNumber },
-    pan: { panNumber: payload.panNumber },
-  })
-);
+  // documents → nested JSON
+  form.append(
+    "documents",
+    JSON.stringify({
+      aadhaar: { aadhaarNumber: payload.aadhaarNumber },
+      pan: { panNumber: payload.panNumber },
+    })
+  );
 
-// files (names must contain keywords)
-form.append("aadhaarFile", payload.aadhaarImage[0]);
-form.append("panFile", payload.panImage[0]);
+  // files (names must contain keywords)
+  form.append("aadhaarFile", payload.aadhaarImage[0]);
+  form.append("panFile", payload.panImage[0]);
 
-const token = JSON.parse(localStorage.getItem("token") || "")
-const res = await api.post("/kyc/submit", form, {
-  headers: { 
-    "Content-Type": "multipart/form-data",
-    Authorization: `Bearer ${token}`,
-  },
-});
+  const token = JSON.parse(localStorage.getItem("token") || "")
+  const res = await api.post("/kyc/submit", form, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+      Authorization: `Bearer ${token}`,
+    },
+  });
 
 
   return res.data;

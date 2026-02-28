@@ -1,101 +1,67 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchInventoriesStart } from "@/features/inventory/inventorySlice";
+import { fetchAuctionsStart } from "@/features/auction/auctionSlice";
+import type { RootState } from "@/app/store";
+import { InventoryStatus } from "@/types/inventory";
 import { ListingStatus } from "@/types/listing";
 import type { DiamondListing } from "@/types/listing";
 import { ListingCard } from "@/components/bids/ListingCard";
 import { BidModal } from "@/components/bids/BidModal";
-import { DiamondShape, DiamondColor, DiamondClarity, DiamondCertification } from "@/types/preference";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, SlidersHorizontal } from "lucide-react";
+import { Search, Filter, SlidersHorizontal, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Navbar from "@/components/layout/Navbar";
 
-// Mock Data Area
-const MOCK_LISTINGS: DiamondListing[] = [
-    {
-        id: "1",
-        sellerId: "seller-123",
-        sellerName: "Diamond Dealer A",
-        shape: DiamondShape.ROUND,
-        carat: 1.02,
-        color: DiamondColor.F,
-        clarity: DiamondClarity.VS1,
-        certification: DiamondCertification.GIA,
-        reportNumber: "GIA-123456",
-        price: 5200,
-        minBidAmount: 4800,
-        imageUrl: "https://images.unsplash.com/photo-1615655114865-4cc1bda5901e?q=80&w=1000&auto=format&fit=crop",
-        location: "New York, NY",
-        status: ListingStatus.ACTIVE,
-        createdAt: new Date().toISOString(),
-        totalBids: 3,
-        currentHighestBid: 5000
-    },
-    {
-        id: "2",
-        sellerId: "seller-456",
-        sellerName: "Luxury Gems Inc",
-        shape: DiamondShape.OVAL,
-        carat: 2.15,
-        color: DiamondColor.D,
-        clarity: DiamondClarity.VVS2,
-        certification: DiamondCertification.IGI,
-        reportNumber: "IGI-987654",
-        price: 15400,
-        minBidAmount: 14500,
-        imageUrl: "https://images.unsplash.com/photo-1599643478518-17488fbbcd75?q=80&w=1000&auto=format&fit=crop",
-        location: "Antwerp, BE",
-        status: ListingStatus.ACTIVE,
-        createdAt: new Date().toISOString(),
-        totalBids: 0
-    },
-    {
-        id: "3",
-        sellerId: "seller-789",
-        sellerName: "Private Seller",
-        shape: DiamondShape.EMERALD,
-        carat: 1.50,
-        color: DiamondColor.H,
-        clarity: DiamondClarity.VS2,
-        certification: DiamondCertification.GIA,
-        reportNumber: "GIA-555555",
-        price: 6800,
-        imageUrl: "https://images.unsplash.com/photo-1600869009498-8d429f88d4f5?q=80&w=1000&auto=format&fit=crop",
-        location: "Tel Aviv, IL",
-        status: ListingStatus.LOCKED,
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        totalBids: 5,
-        currentHighestBid: 6900
-    },
-    {
-        id: "4",
-        sellerId: "current-user", // Simulate user's own listing
-        sellerName: "You",
-        shape: DiamondShape.PEAR,
-        carat: 0.90,
-        color: DiamondColor.E,
-        clarity: DiamondClarity.SI1,
-        certification: DiamondCertification.GIA,
-        reportNumber: "GIA-11111",
-        price: 3200,
-        imageUrl: "",
-        location: "Mumbai, IN",
-        status: ListingStatus.ACTIVE,
-        createdAt: new Date().toISOString(),
-        totalBids: 2,
-        currentHighestBid: 3100
-    }
-];
-
 export default function MarketplacePage() {
+    const dispatch = useDispatch();
+    const inventoryItems = useSelector((state: RootState) => state.inventory.items);
+    const auctions = useSelector((state: RootState) => state.auction.items);
+    const isLoading = useSelector((state: RootState) => state.inventory.loading);
+    const { user } = useSelector((state: RootState) => state.auth);
+    // User auth context mapped optional, mocking for now as per old implementation
+    // const user = useSelector((state: RootState) => state.auth?.user);
+
     // State
-    const [listings, setListings] = useState<DiamondListing[]>(MOCK_LISTINGS);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedListing, setSelectedListing] = useState<DiamondListing | null>(null);
     const [isBidModalOpen, setIsBidModalOpen] = useState(false);
 
+    useEffect(() => {
+        dispatch(fetchInventoriesStart());
+        dispatch(fetchAuctionsStart());
+    }, [dispatch]);
+
     // Mock User ID
-    const currentUserId = "current-user";
+    const currentUserId = user?._id;
+
+    // Map inventory items to diamond listing type, merging active auction data.
+    const listings: DiamondListing[] = inventoryItems
+        .filter(item => item.status === InventoryStatus.LISTED)
+        .map(inv => {
+            const auction = auctions.find(a => a.inventoryId === inv._id && a.status === "ACTIVE");
+
+            return {
+                id: inv._id,
+                sellerId: inv.sellerId,
+                sellerName: "Verified Seller", // This would typically come populated from backend
+                shape: inv.shape as any,
+                carat: inv.carat,
+                color: inv.color as any,
+                clarity: inv.clarity as any,
+                certification: inv.lab as any,
+                reportNumber: inv.barcode,
+                price: auction ? (auction.highestBidPrice > 0 ? auction.highestBidPrice : auction.basePrice) : inv.price,
+                minBidAmount: auction ? auction.basePrice : inv.price * 0.9,
+                imageUrl: inv.images?.[0] || "",
+                location: inv.location,
+                status: ListingStatus.ACTIVE,
+                createdAt: auction ? auction.startDate : inv.createdAt,
+                totalBids: auction ? auction.bidIds?.length || 0 : 0,
+                currentHighestBid: (auction && auction.highestBidPrice > 0) ? auction.highestBidPrice : undefined
+            };
+        });
 
     // Filter Logic
     const filteredListings = listings.filter(listing =>
@@ -114,13 +80,30 @@ export default function MarketplacePage() {
         setIsBidModalOpen(true);
     };
 
-    const handleSubmitBid = async (amount: number, note?: string) => {
-        // Simulate API call
-        return new Promise<void>((resolve) => {
-            setTimeout(() => {
-                console.log(`Bid placed: $${amount} on ${selectedListing?.id} with note: ${note}`);
-                resolve();
-            }, 1000);
+    const handleSubmitBid = async (amount: number) => {
+        return new Promise<void>((resolve, reject) => {
+            if (!selectedListing) {
+                reject(new Error("No listing selected"));
+                return;
+            }
+
+            // Find the auction associated with this listing
+            const auction = auctions.find(a => a.inventoryId === selectedListing.id && a.status === "ACTIVE");
+            if (!auction) {
+                toast.error("Active auction not found for this listing.");
+                reject(new Error("No active auction"));
+                return;
+            }
+
+            dispatch({
+                type: "bid/createBidStart",
+                payload: {
+                    auctionId: auction._id,
+                    payload: { bidAmount: amount }
+                }
+            });
+            // We resolve immediately or you could watch Redux state for success tracking
+            resolve();
         });
     };
 
@@ -158,16 +141,23 @@ export default function MarketplacePage() {
                 </div>
 
                 {/* Listings Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {filteredListings.map(listing => (
-                        <ListingCard
-                            key={listing.id}
-                            listing={listing}
-                            isOwner={listing.sellerId === currentUserId}
-                            onPlaceBid={handlePlaceBid}
-                        />
-                    ))}
-                </div>
+                {isLoading ? (
+                    <div className="flex justify-center items-center py-20">
+                        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                        <span className="ml-2 text-indigo-600 font-medium">Loading Marketplace...</span>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {filteredListings.map(listing => (
+                            <ListingCard
+                                key={listing.id}
+                                listing={listing as any}
+                                isOwner={listing.sellerId === currentUserId}
+                                onPlaceBid={handlePlaceBid}
+                            />
+                        ))}
+                    </div>
+                )}
 
                 {/* Empty State */}
                 {filteredListings.length === 0 && (
