@@ -6,6 +6,7 @@ import {
   getMyBidByAuctionService,
   getMyBidByInventoryService,
   updateBidStatusService,
+  getAllMyBidsService,
 } from "../services/bid.service.js";
 import { createSystemDealService } from "../services/deal.service.js";
 import { notifyDealCreated, notifyAuctionOwnerNewBid } from "../services/notification.service.js";
@@ -205,3 +206,27 @@ export const updateBidStatus = async (req: Request, res: Response, next: NextFun
     next(error);
   }
 }
+
+export const getAllMyBids = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const buyerId = (req as any).user?.id as string | undefined;
+
+    if (!buyerId) {
+      const err: any = new Error("Unauthorized");
+      err.statusCode = 401;
+      throw err;
+    }
+
+    const bids = await getAllMyBidsService(buyerId);
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: "Fetched all your bids successfully",
+      data: bids,
+    });
+  } catch (error: any) {
+    next(error);
+  }
+};

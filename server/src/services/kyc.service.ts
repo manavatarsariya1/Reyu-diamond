@@ -95,11 +95,11 @@ export const sendMailToAllAdmins = async (userId: string): Promise<void> => {
 
 
 export const getKycStatusService = async (userId: string) => {
-  const kyc = await KYC.findOne({ userId }).select("status");
+  const kyc = await KYC.findOne({ userId }).select("status rejectionReason");
 
   if (!kyc) {
-    return "NOT_SUBMITTED";
+    return { status: "NOT_SUBMITTED" };
   }
 
-  return kyc.status;
+  return { status: kyc.status, rejectionReason: kyc.rejectionReason };
 };

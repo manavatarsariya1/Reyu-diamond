@@ -385,3 +385,19 @@ export const updateBidStatusService = async (
     return updatedBid;
   }
 };
+
+export const getAllMyBidsService = async (buyerId: string): Promise<any[]> => {
+  // Find all bids placed by the user
+  const bids = await Bid.find({ buyerId })
+    .populate({
+      path: "auctionId",
+      populate: {
+        path: "inventoryId",
+        select: "carat shape color clarity lab price images location status"
+      }
+    })
+    .sort({ createdAt: -1 });
+
+  return bids;
+};
+

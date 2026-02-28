@@ -5,6 +5,7 @@ import {
   getAllBid,
   getSellerBid,
   updateBidStatus,
+  getAllMyBids,
 } from "../controllers/bid.controller.js";
 import { kycVerifiedOnly } from "../middlewares/kyc.middleware.js";
 import { loadUserRole } from "../middlewares/permission.middleware.js";
@@ -16,6 +17,7 @@ const router = Router();
 
 router.use(protect, kycVerifiedOnly, loadUserRole);
 
+router.get("/user/my-bids", getAllMyBids);
 router.post("/:auctionId", validate(createBidSchema), createBid);
 router.get("/:auctionId", getAllBid);
 router.get("/:auctionId/my-bid", getSellerBid);

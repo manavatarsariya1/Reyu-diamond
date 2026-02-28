@@ -30,12 +30,12 @@ export const submitKyc = async (req: Request, res: Response, next: NextFunction)
     }
 
     // ✅ PARSE JSON STRINGS FIRST
-    const parsedAddress = typeof req.body.address === 'string' 
-      ? JSON.parse(req.body.address) 
+    const parsedAddress = typeof req.body.address === 'string'
+      ? JSON.parse(req.body.address)
       : req.body.address;
 
-    const parsedDocuments = typeof req.body.documents === 'string' 
-      ? JSON.parse(req.body.documents) 
+    const parsedDocuments = typeof req.body.documents === 'string'
+      ? JSON.parse(req.body.documents)
       : req.body.documents;
 
     // ✅ NOW destructure with parsed data
@@ -117,7 +117,7 @@ export const submitKyc = async (req: Request, res: Response, next: NextFunction)
   } catch (err: any) {
     next(err);
   }
-}; 
+};
 
 
 
@@ -136,14 +136,14 @@ export const getKycStatus = async (
       throw err;
     }
 
-    const status = await getKycStatusService(userId);
+    const result = await getKycStatusService(userId);
 
     return sendResponse({
       res,
       statusCode: 200,
       success: true,
       message: "KYC status fetched successfully",
-      data: { status }, // ✅ only sending status
+      data: result,
     });
   } catch (err) {
     next(err);
