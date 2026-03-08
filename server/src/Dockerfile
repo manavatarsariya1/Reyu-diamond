@@ -11,7 +11,9 @@ COPY . .
 
 RUN npm run build
 
-# Remove dev deps
+# Debug to confirm dist exists
+RUN ls -la dist
+
 RUN npm prune --omit=dev && npm cache clean --force
 
 
@@ -22,7 +24,7 @@ WORKDIR /app
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-COPY package.json .
+COPY --from=builder /app/package.json .
 
 EXPOSE 3000
 
