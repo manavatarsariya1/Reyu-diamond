@@ -47,6 +47,11 @@ export const createDealService = async (bidId: string, userId: string) => {
     sellerId: inventory.sellerId,
     agreedAmount: bid.bidAmount,
     status: "CREATED",
+    history: [{
+      status: "CREATED",
+      changedBy: new mongoose.Types.ObjectId(userId),
+      changedAt: new Date(),
+    }]
   });
 
   return deal;
@@ -89,6 +94,10 @@ export const createSystemDealService = async (bidId: string) => {
     sellerId: inventory.sellerId,
     agreedAmount: bid.bidAmount,
     status: "CREATED",
+    history: [{
+      status: "CREATED",
+      changedAt: new Date(),
+    }]
   });
 
   return deal;
@@ -105,6 +114,7 @@ const dealListPopulate = [
   { path: "sellerId", select: "username email" },
   { path: "auctionId" },
   { path: "bidId" },
+  { path: "history.changedBy", select: "username email role" },
 ];
 
 export const getDealByIdService = async (
@@ -257,7 +267,7 @@ export const updateDealStatusService = async (
   });
   await deal.save();
 
-  return deal;
+  return await Deal.findById(deal._id).populate(dealListPopulate);
 };
 
 export const dealDownloadService = async (
@@ -337,7 +347,7 @@ export const cancelDealService = async (
         },
       },
       { new: true, session, runValidators: false }
-    );
+    ).populate(dealListPopulate);
 
     if (!updatedDeal) {
       throw new Error("Failed to cancel deal: Update returned null");
@@ -416,7 +426,7 @@ export const raiseDisputeService = async (
         },
       },
       { new: true, session, runValidators: false }
-    );
+    ).populate(dealListPopulate);
 
     if (!updatedDeal) {
       throw new Error("Failed to dispute deal: Update returned null");
