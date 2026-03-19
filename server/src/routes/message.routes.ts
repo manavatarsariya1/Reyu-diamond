@@ -15,8 +15,8 @@ const router = Router();
 
 router.use(protect, kycVerifiedOnly);
 
-router.post("/messages", upload.any(), validate(sendMessageSchema), sendMessage);
-router.delete("/messages/:messageId", deleteMessage);
-router.get("/messages/:conversationId", getConversationMessages);
+router.post("/", upload.any(), validate(sendMessageSchema), sendMessage);
+router.delete("/:messageId", deleteMessage);
+router.get("/:conversationId", getConversationMessages);
 
 export default router;

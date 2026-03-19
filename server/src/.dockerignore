@@ -1,4 +1,17 @@
 node_modules
 dist
 .env
+.env.*
 .git
+.gitignore
+Dockerfile
+docker-compose*.yml
+*.md
+tests/
+scripts/
+.vscode/
+.idea/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
