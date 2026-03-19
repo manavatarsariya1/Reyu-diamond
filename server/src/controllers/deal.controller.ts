@@ -350,3 +350,80 @@ export const resolveDispute = async (req: any, res: Response, next: NextFunction
     next(error);
   }
 };
+
+export const directDealCreation = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const auctionId = req.params.auctionId as string;
+    const buyerId = (req as any).user?.id as string | undefined;
+
+    if (!buyerId) {
+      const err: any = new Error("Unauthorized");
+      err.statusCode = 401;
+      throw err;
+    }
+
+    if (!auctionId) {
+      const err: any = new Error("Auction ID is required");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 1. Get the Auction to find out the price
+    const { getAuctionByIdService } = await import("../services/auction.service.js");
+    const { createBidService, updateBidStatusService } = await import("../services/bid.service.js");
+    const { createSystemDealService } = await import("../services/deal.service.js");
+
+    const auction = await getAuctionByIdService(auctionId, buyerId);
+
+    // We assume the Buy It Now price is highestBidPrice OR basePrice.
+    const price = (auction.highestBidPrice && auction.highestBidPrice > 0) ? auction.highestBidPrice : auction.basePrice;
+
+    // 2. Programmatically create the "Buy It Now" bid
+    const bid = await createBidService({
+      auctionId,
+      buyerId,
+      bidAmount: price,
+      role: "user"
+    });
+
+    if (!bid || !bid._id) {
+      throw new Error("Failed to create direct bid");
+    }
+
+    // 3. Programmatically accept the bid
+    // Notice: we bypass standard permissions since this is a system-level direct buy action
+    const updatedBid = await updateBidStatusService(
+      bid._id.toString(),
+      "ACCEPTED",
+      auction.inventoryId.sellerId.toString(), // spoof the seller's authority to accept
+      "admin" // spoof admin role to ensure success bypassing normal seller checks if needed.
+    );
+
+    if (!updatedBid || updatedBid.status !== "ACCEPTED") {
+      throw new Error("Failed to auto-accept direct deal bid");
+    }
+
+    // 4. Create the final Deal
+    const deal = await createSystemDealService(bid._id.toString());
+
+    // Fire notifications
+    notifyDealCreated(deal).catch((err) =>
+      console.error("Deal notification failed:", err)
+    );
+
+    return sendResponse({
+      res,
+      statusCode: 201,
+      success: true,
+      message: "Direct Deal created successfully",
+      data: deal,
+    });
+  } catch (error: any) {
+    if (error.message === "Inventory not found" || error.message === "Auction not found") {
+      error.statusCode = 404;
+    } else {
+      error.statusCode = 400;
+    }
+    next(error);
+  }
+};

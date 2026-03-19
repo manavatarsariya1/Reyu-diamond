@@ -103,7 +103,10 @@ function getId(v: any): string {
 const dealListPopulate = [
   { path: "buyerId", select: "username email" },
   { path: "sellerId", select: "username email" },
-  { path: "auctionId" },
+  {
+    path: "auctionId",
+    populate: { path: "inventoryId" }
+  },
   { path: "bidId" },
 ];
 
