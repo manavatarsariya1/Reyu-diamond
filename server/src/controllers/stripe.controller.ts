@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import mongoose from "mongoose";
 import { stripeService } from "../services/stripe.service.js";
 import { logService } from "../services/log.service.js";
 import User from "../models/User.model.js";
@@ -139,7 +140,7 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
     }
 
     console.log("📩 Stripe Event Verified:", event.type);
-    console.log("Event Data Object ID:", event.data.object.id);
+    console.log("Event Data Object ID:", (event.data.object as any).id);
 
     try {
         /**
@@ -171,12 +172,21 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
 
             // Update deal
             const updatedDeal = await Deal.findByIdAndUpdate(escrow.deal, {
-                status: "IN_ESCROW",
-                payment: {
-                    isPaid: true,
-                    paidAt: new Date(),
-                    method: paymentIntent.payment_method_types?.[0] || 'card',
-                    transactionId: paymentIntent.id
+                $set: {
+                    status: "IN_ESCROW",
+                    payment: {
+                        isPaid: true,
+                        paidAt: new Date(),
+                        method: paymentIntent.payment_method_types?.[0] || 'card',
+                        transactionId: paymentIntent.id
+                    }
+                },
+                $push: {
+                    history: {
+                        status: "IN_ESCROW",
+                        changedBy: new mongoose.Types.ObjectId(paymentIntent.metadata?.buyerId),
+                        changedAt: new Date(),
+                    }
                 }
             });
             console.log("✅ Updated Deal status to IN_ESCROW:", updatedDeal?._id);

@@ -107,3 +107,81 @@ export const markMessagesAsRead = async (
   chat.unreadCounts.set(userId, 0);
   await chat.save();
 };
+
+export const getPotentialPartners = async (userId: string) => {
+  const uid = new mongoose.Types.ObjectId(userId);
+
+  // 1. Find Deals where user is participant
+  const deals = await mongoose.model("Deal").find({
+    $or: [{ buyerId: uid }, { sellerId: uid }]
+  }).populate("buyerId sellerId auctionId").populate({
+    path: "auctionId",
+    populate: { path: "inventoryId" }
+  });
+
+  // 2. Find Bids placed by user (to find sellers)
+  const myBids = await mongoose.model("Bid").find({ buyerId: uid })
+    .populate({
+      path: "auctionId",
+      populate: { path: "inventoryId" }
+    });
+
+  // 3. Find Bids on my auctions (to find buyers)
+  const auctionsIOwn = await Auction.find({ recipient: uid }); // recipient is the owner in Auction model it seems
+  // Wait, let's check Auction model recipient field
+  const auctionIds = auctionsIOwn.map(a => a._id);
+  const bidsOnMyAuctions = await mongoose.model("Bid").find({ auctionId: { $in: auctionIds } })
+    .populate("buyerId").populate({
+        path: "auctionId",
+        populate: { path: "inventoryId" }
+    });
+
+  const partnersMap = new Map();
+
+  // Process Deals
+  deals.forEach((d: any) => {
+    const partner = d.buyerId._id.toString() === userId ? d.sellerId : d.buyerId;
+    const key = `${partner._id}_${d.auctionId?._id || d._id}`;
+    partnersMap.set(key, {
+      userId: partner._id,
+      username: partner.username,
+      contextId: d.auctionId?._id || d.auctionId || d._id,
+      contextType: "Auction", 
+      itemTitle: d.auctionId?.inventoryId?.stoneId || d.auctionId?.inventoryId?.certificateNumber || "Deal Interaction"
+    });
+  });
+
+  // Process My Bids
+  myBids.forEach((b: any) => {
+    const sellerId = b.auctionId?.inventoryId?.sellerId;
+    if (sellerId) {
+        const key = `${sellerId}_${b.auctionId._id}`;
+        if (!partnersMap.has(key)) {
+            partnersMap.set(key, {
+                userId: sellerId,
+                username: "Seller", // We might need to populate this properly
+                contextId: b.auctionId._id,
+                contextType: "Auction",
+                itemTitle: b.auctionId.inventoryId.stoneId || "Auction Interaction"
+            });
+        }
+    }
+  });
+
+  // Process Bids on My Auctions
+  bidsOnMyAuctions.forEach((b: any) => {
+    const partner = b.buyerId;
+    const key = `${partner._id}_${b.auctionId._id}`;
+    if (!partnersMap.has(key)) {
+        partnersMap.set(key, {
+            userId: partner._id,
+            username: partner.username,
+            contextId: b.auctionId._id,
+            contextType: "Auction",
+            itemTitle: b.auctionId.inventoryId.stoneId || "Bid Interaction"
+        });
+    }
+  });
+
+  return Array.from(partnersMap.values());
+};

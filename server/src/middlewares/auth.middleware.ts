@@ -30,7 +30,7 @@ const authMiddleware = async (
     });
   }
 
-  console.log("Authorization Header:", authHeader); // Debugging log
+  // console.log("Authorization Header:", authHeader); // Debugging log
   const token = authHeader.split(" ")[1];
 
   if (!token) {

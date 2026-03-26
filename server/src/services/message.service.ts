@@ -79,7 +79,13 @@ export const sendMessage = async (
 
   // REALTIME EMIT
   const io = getIO();
+  // Emit to the conversation room for active chat window updates
   io.to(conversationId).emit("new_message", populated);
+  
+  // Also emit to individual participants' rooms for sidebar updates/notifications
+  chat.participants.forEach(p => {
+    io.to(p.toString()).emit("new_message", populated);
+  });
 
   return populated;
 };

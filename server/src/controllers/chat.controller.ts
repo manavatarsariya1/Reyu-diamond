@@ -66,3 +66,20 @@ export const markAsRead = async (req: AuthRequest, res: Response, next: NextFunc
     next(error);
   }
 };
+
+export const getPotentialPartners = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.id;
+    const partners = await chatService.getPotentialPartners(userId!.toString());
+
+    return sendResponse({
+      res,
+      statusCode: 200,
+      success: true,
+      message: "Success",
+      data: partners,
+    });
+  } catch (error: any) {
+    next(error);
+  }
+};

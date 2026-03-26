@@ -82,12 +82,16 @@ export const getAllInventoriesService = async (filters: any = {}): Promise<IInve
         if (filters.maxCarat) query.carat.$lte = Number(filters.maxCarat);
     }
 
-    // Search by title or barcode (optional enhancement)
+            // Search by title or barcode (optional enhancement)
     if (filters.search) {
         query.$or = [
             { title: { $regex: filters.search, $options: 'i' } },
             { barcode: { $regex: filters.search, $options: 'i' } }
         ];
+    }
+
+    if (filters.sellerId) {
+        query.sellerId = filters.sellerId;
     }
 
     const inventories = await Inventory.find(query).sort({ createdAt: -1 });

@@ -171,6 +171,18 @@ export class StripeService {
                 { upsert: true, new: true, runValidators: true }
             );
 
+            // Update Deal status to PAYMENT_PENDING with history
+            await Deal.findByIdAndUpdate(deal._id, {
+                $set: { status: "PAYMENT_PENDING" },
+                $push: {
+                    history: {
+                        status: "PAYMENT_PENDING",
+                        changedBy: deal.buyerId,
+                        changedAt: new Date(),
+                    }
+                }
+            });
+
             return {
                 clientSecret: paymentIntent.client_secret,
                 paymentIntentId: paymentIntent.id,
@@ -260,7 +272,13 @@ export class StripeService {
 
                 // update deal
                 const startDeal = await Deal.findByIdAndUpdate(dealId, {
-                    status: "COMPLETED",
+                    $set: { status: "COMPLETED" },
+                    $push: {
+                        history: {
+                            status: "COMPLETED",
+                            changedAt: new Date(),
+                        }
+                    }
                 }, { session });
 
                 if (startDeal) {
@@ -287,7 +305,13 @@ export class StripeService {
 
             // update deal
             const startDeal = await Deal.findByIdAndUpdate(dealId, {
-                status: "COMPLETED",
+                $set: { status: "COMPLETED" },
+                $push: {
+                    history: {
+                        status: "COMPLETED",
+                        changedAt: new Date(),
+                    }
+                }
             });
 
             if (startDeal) {
@@ -334,7 +358,13 @@ export class StripeService {
 
         // update deal
         await Deal.findByIdAndUpdate(dealId, {
-            status: "CANCELLED",
+            $set: { status: "CANCELLED" },
+            $push: {
+                history: {
+                    status: "CANCELLED",
+                    changedAt: new Date(),
+                }
+            }
         });
 
         return {
