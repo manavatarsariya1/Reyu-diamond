@@ -22,6 +22,8 @@ export const InventoryCard = ({
   activeAuction?: Auction,
   hasActiveAuction?: boolean
 }) => {
+
+  // console.log(item)
   const status = STATUS_THEME[item.status] || STATUS_THEME.AVAILABLE;
   const isLocked = item.status === "LOCKED" || item.status === "ON_MEMO";
 
@@ -133,14 +135,14 @@ export const InventoryCard = ({
             )}
 
             <Link
-              to={isLocked ? `/deals/${item.activeDealId}` : `/inventory/${item._id}`}
+              to={isLocked ? `/deals` : `/inventory/${item._id}`}
               className={`w-full flex items-center justify-center gap-2 ${isLocked ? 'py-4' : 'py-3'} rounded-2xl font-bold text-sm transition-all duration-300 ${isLocked
                 ? "bg-slate-900 text-white shadow-xl shadow-slate-200"
                 : "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-xl shadow-indigo-200 hover:shadow-indigo-300 active:scale-[0.98]"
                 }`}
             >
               {isLocked ? <ShieldCheck size={16} /> : null}
-              {isLocked ? "View Locked Deal" : "Manage Inventory"}
+              {isLocked ? "View Deals" : "Manage Inventory"}
               {!isLocked && <ArrowRight size={16} />}
             </Link>
 

@@ -5,10 +5,11 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  role: "admin" | "user";
+  role: "admin" | "user" | "seller" | "buyer";
   isVerified: boolean;
   accountStatus: "ACTIVE" | "DEACTIVE";
   isKycVerified: boolean;
+  stripeAccountId?: string;
 }
 
 export interface LoginPayload {
@@ -122,7 +123,7 @@ export class AuthService {
   }
 
   // VERIFY OTP
-  async verifyOtp(payload: VerifyOtpPayload): Promise<User> {
+  async verifyOtp(payload: VerifyOtpPayload): Promise<{ user: User; message: string }> {
     try {
       // console.log("hwllo")
       console.log(payload)

@@ -20,7 +20,9 @@ export default function InventoryPage() {
     const dispatch = useDispatch();
     const { items: inventoryItems, loading } = useSelector((state: RootState) => state.inventory);
     const auctions = useSelector((state: RootState) => state.auction.items);
-    const currentUserId = useSelector((state: RootState) => state.auth.user?._id);
+    const user = useSelector((state: RootState) => state.auth.user);
+    const currentUserId = user?._id || user?.id;
+    const currentUserRole = user?.role;
     const { isCollapsed } = useLayout();
 
     // Only ONE piece of state needed — the search string
@@ -30,6 +32,10 @@ export default function InventoryPage() {
     // Auction Modal State
     const [auctionModalOpen, setAuctionModalOpen] = useState(false);
     const [selectedAuctionItem, setSelectedAuctionItem] = useState<InventoryItem | null>(null);
+
+    console.log("currentUserId:", currentUserId);
+    console.log("sellerId:", inventoryItems[0]?.sellerId);
+    console.log("match:", currentUserId === inventoryItems[0]?.sellerId);
 
     useEffect(() => {
         dispatch(fetchInventoriesStart());
@@ -44,10 +50,13 @@ export default function InventoryPage() {
 
     // ── Step 1: seller filter (derived, no state) ────────────────────────────
     const myItems = useMemo(
-        () => currentUserId
-            ? inventoryItems.filter(i => i.sellerId === currentUserId)
-            : [],
-        [inventoryItems, currentUserId]
+        () => {
+            if (currentUserRole === "admin") return inventoryItems;
+            return currentUserId
+                ? inventoryItems.filter(i => i.sellerId === currentUserId)
+                : [];
+        },
+        [inventoryItems, currentUserId, currentUserRole]
     );
 
     // ── Step 2: search filter (derived, no state) ────────────────────────────
@@ -55,11 +64,15 @@ export default function InventoryPage() {
         if (!searchQuery) return myItems;
         const lower = searchQuery.toLowerCase();
         return myItems.filter(i =>
-            i._id.includes(lower) ||
+            i._id.toLowerCase().includes(lower) ||
             i.barcode?.toLowerCase().includes(lower) ||
-            i.shape.toLowerCase().includes(lower)
+            i.shape.toLowerCase().includes(lower) ||
+            i.title?.toLowerCase().includes(lower)
         );
     }, [myItems, searchQuery]);
+
+    // console.log(filteredItems,"mmm")
+
 
     const handleSearch = (query: string) => setSearchQuery(query);
 
@@ -103,6 +116,7 @@ export default function InventoryPage() {
                         : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"
                 }>
                     {filteredItems.map(item => (
+                        console.log(item),
                         <InventoryCard
                             key={item._id}
                             item={item}

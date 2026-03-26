@@ -1,73 +1,162 @@
 import type { Deal } from "@/types/deal";
 import { DealStatusBadge } from "./DealStatusBadge";
-import { Button } from "@/components/ui/button";
-import { ChevronRight, Diamond } from "lucide-react";
+import { Diamond, ArrowRight, Banknote, Calendar, ShieldCheck, CreditCard } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface DealCardProps {
     deal: Deal;
 }
 
+const statusAccent: Record<string, string> = {
+    CREATED: "from-blue-500/10    border-l-blue-400",
+    PAYMENT_PENDING: "from-amber-500/10   border-l-amber-400",
+    IN_ESCROW: "from-purple-500/10  border-l-purple-400",
+    SHIPPED: "from-cyan-500/10    border-l-cyan-400",
+    DELIVERED: "from-teal-500/10    border-l-teal-400",
+    COMPLETED: "from-emerald-500/10 border-l-emerald-400",
+    DISPUTED: "from-red-500/10     border-l-red-400",
+    CANCELLED: "from-gray-500/5     border-l-gray-300",
+};
 
 export function DealCard({ deal }: DealCardProps) {
-    // Helper to format currency
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            maximumFractionDigits: 0,
-        }).format(amount);
-    };
+    const fmt = (n: number) =>
+        new Intl.NumberFormat("en-US", { style: "currency", currency: deal.currency || "USD", maximumFractionDigits: 0 }).format(n);
+
+    const auction = deal.auctionId as any;
+    const inventory = typeof auction?.inventoryId === "object" ? auction.inventoryId : null;
+    const bid = deal.bidId as any;
+    const buyer = deal.buyerId as any;
+    const seller = deal.sellerId as any;
+
+    const diamondImage = inventory?.images?.[0];
+    const title = inventory
+        ? `${inventory?.carat?.toFixed?.(2) ?? inventory.carat} ct ${inventory.shape}`
+        : `Deal #${deal._id.slice(-8).toUpperCase()}`;
+
+    const accentClass = statusAccent[deal.status] ?? statusAccent.CREATED;
+
+    const fmtDate = (d: string) =>
+        d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+
+    const isPaid = deal.payment?.isPaid;
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 hover:shadow-md transition-all group">
-            <div className="flex items-center gap-4">
-                {/* Thumbnail */}
-                <div className="h-16 w-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center border border-gray-100">
-                    {deal.listing.imageUrl ? (
+        <Link
+            to={`/deals/${deal._id}`}
+            className={`group block bg-white rounded-2xl border border-gray-100 border-l-4 ${accentClass} bg-gradient-to-r to-white shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden`}
+        >
+            <div className="flex items-stretch gap-0">
+
+                {/* ── Thumbnail ── */}
+                <div className="w-24 h-40 sm:w-32 shrink-0 bg-slate-50 flex items-center justify-center border-r border-gray-100 relative overflow-hidden">
+                    {diamondImage ? (
                         <img
-                            src={deal.listing.imageUrl}
+                            src={diamondImage}
                             alt="Diamond"
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-contain p-4 mix-blend-multiply transition-transform duration-500 group-hover:scale-110"
                         />
                     ) : (
-                        <Diamond className="h-6 w-6 text-gray-300" />
+                        <Diamond className="w-10 h-10 text-slate-200 group-hover:text-indigo-200 transition-colors" strokeWidth={1} />
                     )}
                 </div>
 
-                {/* Info */}
-                <div className="flex-grow min-w-0">
-                    <div className="flex justify-between items-start mb-1">
-                        <h4 className="font-bold text-gray-900 truncate pr-2">
-                            {deal.listing.carat}ct {deal.listing.shape} Diamond
-                        </h4>
-                        <DealStatusBadge status={deal.status} />
+                {/* ── Body ── */}
+                <div className="flex-1 px-5 py-4 min-w-0">
+                    {/* Top row: title + status */}
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="min-w-0">
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+                                {inventory?.lab ? `${inventory.lab} Certified` : "Diamond Asset"}
+                            </p>
+                            <h4 className="text-base font-extrabold text-gray-900 truncate leading-tight">
+                                {title}
+                                {inventory?.clarity && inventory?.color && (
+                                    <span className="ml-2 text-sm font-semibold text-gray-400">
+                                        {inventory.color} / {inventory.clarity}
+                                    </span>
+                                )}
+                            </h4>
+                        </div>
+                        <div className="shrink-0">
+                            <DealStatusBadge status={deal.status} />
+                        </div>
                     </div>
 
-                    <div className="flex justify-between items-end">
-                        <div className="text-sm text-gray-500">
-                            Deal ID: <span className="font-mono text-xs text-gray-400">#{deal.id.substring(0, 8)}</span>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-sm font-bold text-gray-900">
-                                {formatCurrency(deal.finalPrice)}
+                    {/* Stats row */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {/* Amount */}
+                        <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                                <Banknote className="w-3.5 h-3.5 text-indigo-500" />
                             </div>
-                            <div className="text-xs text-gray-400">
-                                Updated {new Date(deal.updatedAt).toLocaleDateString()}
+                            <div>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">Amount</p>
+                                <p className="text-sm font-black text-gray-900 leading-tight">{fmt(deal.agreedAmount)}</p>
+                            </div>
+                        </div>
+
+                        {/* Payment Status */}
+                        <div className="flex items-center gap-2">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isPaid ? "bg-emerald-50" : "bg-amber-50"}`}>
+                                <CreditCard className={`w-3.5 h-3.5 ${isPaid ? "text-emerald-500" : "text-amber-500"}`} />
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">Payment</p>
+                                <p className={`text-sm font-bold leading-tight ${isPaid ? "text-emerald-600" : "text-amber-600"}`}>
+                                    {isPaid ? "Paid" : "Pending"}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Participants */}
+                        <div className="flex items-center gap-2 hidden sm:flex">
+                            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                                <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">Buyer</p>
+                                <p className="text-sm font-bold text-gray-800 leading-tight truncate">
+                                    {buyer?.username || deal._id.slice(-6)}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Date */}
+                        <div className="flex items-center gap-2 hidden sm:flex">
+                            <div className="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
+                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">Created</p>
+                                <p className="text-sm font-bold text-gray-700 leading-tight">{fmtDate(deal.createdAt)}</p>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Action */}
-                <div className="pl-2">
-                    <Button variant="ghost" size="icon" asChild className="rounded-full h-8 w-8">
-                        <Link to={`/deals/${deal.id}`}>
-                            <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600" />
-                        </Link>
-                    </Button>
+                    {/* Footer: ID + seller + arrow */}
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
+                        <div className="flex items-center gap-3 text-xs text-gray-400">
+                            <span className="font-mono bg-gray-50 px-2 py-0.5 rounded-md">
+                                #{deal._id.slice(-10).toUpperCase()}
+                            </span>
+                            {seller?.username && (
+                                <span>
+                                    Seller: <span className="text-gray-600 font-semibold">{seller.username}</span>
+                                </span>
+                            )}
+                            {bid?.bidAmount && bid.bidAmount !== deal.agreedAmount && (
+                                <span className="hidden sm:inline">
+                                    Bid: <span className="text-indigo-500 font-semibold">{fmt(bid.bidAmount)}</span>
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-500 group-hover:text-indigo-700 transition-colors">
+                            View Details
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </Link>
     );
 }

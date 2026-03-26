@@ -44,7 +44,7 @@ export default function ListingDetailsPage() {
                 // 2. Fetch auctions
                 const auctionsResponse = await auctionService.getAuctions();
                 const activeAuction = auctionsResponse.find((a) => {
-                    const invId = typeof a.inventoryId === "object" ? (a.inventoryId as any)._id : a.inventoryId;
+                    const invId = typeof a.inventoryId === "object" ? (a.inventoryId as any)?._id : a.inventoryId;
                     return invId === id && a.status === "ACTIVE";
                 });
 

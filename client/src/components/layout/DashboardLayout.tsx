@@ -1,13 +1,19 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { MobileHeader } from './MobileHeader';
 import { cn } from '@/lib/utils';
 import { LayoutContext } from '@/utils/Layoutcontext';
+import { StripeOnboardingBanner } from '../payment/StripeOnboardingBanner';
+import Navbar from './Navbar';
 
 const DashboardLayout = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
+        const location = useLocation();
+
+
+      const showBanner = location.pathname === '/seller-dashboard';
 
     return (
         <LayoutContext.Provider value={{ isMobileMenuOpen, setIsMobileMenuOpen, isCollapsed, setIsCollapsed }}>
@@ -23,6 +29,7 @@ const DashboardLayout = () => {
                         onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
                     />
                 </div>
+                <Navbar/>
 
                 {/* Main area */}
                 <main className={cn(
@@ -45,7 +52,8 @@ const DashboardLayout = () => {
                     )}
 
                     {/* Page content */}
-                    <div className="h-full overflow-y-auto">
+                    <div className="h-full overflow-y-auto w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
+                       
                         <Outlet />
                     </div>
                 </main>

@@ -1,130 +1,33 @@
-import { useState } from "react";
-import {  ListingStatus } from "@/types/listing";
-import {  DealStatus } from "@/types/deal";
-import type { Deal } from "@/types/deal";
-import type { DiamondListing } from "@/types/listing";
-import {  BidStatus } from "@/types/bid";
-import type { Bid } from "@/types/bid";
-import { DiamondShape, DiamondColor, DiamondClarity, DiamondCertification } from "@/types/preference";
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "@/app/store";
+import { fetchAllDealsRequest } from "@/features/deal/dealSlice";
 import { DealCard } from "@/components/deals/DealCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Search, Filter, ShieldCheck } from "lucide-react";
-
-// Mock Data
-const MOCK_DEALS: Deal[] = [
-    {
-        id: "d1",
-        listing: {
-            id: "1",
-            sellerId: "seller-123",
-            sellerName: "Diamond Dealer A",
-            shape: DiamondShape.ROUND,
-            carat: 1.02,
-            color: DiamondColor.F,
-            clarity: DiamondClarity.VS1,
-            certification: DiamondCertification.GIA,
-            reportNumber: "GIA-123456",
-            price: 5200,
-            imageUrl: "https://images.unsplash.com/photo-1615655114865-4cc1bda5901e?q=80&w=1000&auto=format&fit=crop",
-            location: "New York, NY",
-            status: ListingStatus.SOLD,
-            createdAt: new Date().toISOString(),
-            totalBids: 3
-        },
-        acceptedBid: {
-            id: "b1",
-            listingId: "1",
-            bidderId: "current-user",
-            bidderName: "You",
-            amount: 5000,
-            status: BidStatus.ACCEPTED,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        },
-        buyerId: "current-user",
-        buyerName: "You",
-        sellerId: "seller-123",
-        sellerName: "Diamond Dealer A",
-        status: DealStatus.SHIPPED,
-        finalPrice: 5000,
-        logistics: {
-            paymentMethod: "Wire Transfer",
-            paymentTransactionId: "TXN-99887766",
-            escrowId: "ESC-112233",
-            shippingCarrier: "Brinks",
-            trackingNumber: "1Z999AA10123456784",
-            estimatedDeliveryDate: "Oct 25, 2026"
-        },
-        createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-        updatedAt: new Date().toISOString(),
-        isDisputed: false,
-        hasDocuments: true
-    },
-    {
-        id: "d2",
-        listing: {
-            id: "4",
-            sellerId: "current-user",
-            sellerName: "You",
-            shape: DiamondShape.PEAR,
-            carat: 0.90,
-            color: DiamondColor.E,
-            clarity: DiamondClarity.SI1,
-            certification: DiamondCertification.GIA,
-            reportNumber: "GIA-11111",
-            price: 3200,
-            imageUrl: "",
-            location: "Mumbai, IN",
-            status: ListingStatus.LOCKED,
-            createdAt: new Date().toISOString(),
-            totalBids: 2
-        },
-        acceptedBid: {
-            id: "b_inc_1",
-            listingId: "4",
-            bidderId: "bidder-1",
-            bidderName: "Bidder #492",
-            amount: 3000,
-            status: BidStatus.ACCEPTED,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        },
-        buyerId: "bidder-1",
-        buyerName: "Bidder #492",
-        sellerId: "current-user",
-        sellerName: "You",
-        status: DealStatus.IN_ESCROW,
-        finalPrice: 3000,
-        logistics: {
-            escrowId: "ESC-445566",
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isDisputed: false,
-        hasDocuments: false
-    }
-];
+import { Search, Filter, ShieldCheck, Loader2 } from "lucide-react";
 
 export default function DealDashboardPage() {
-    const [deals, setDeals] = useState<Deal[]>(MOCK_DEALS);
+    const dispatch = useDispatch<AppDispatch>();
+    const { deals, isLoading } = useSelector((state: RootState) => state.deal);
+
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState("all");
 
+    useEffect(() => {
+        dispatch(fetchAllDealsRequest());
+    }, [dispatch]);
+
     // Filter Logic
-    const filteredDeals = deals.filter(deal => {
-        const matchesSearch = deal.id.includes(searchQuery) ||
-            deal.listing.shape.toLowerCase().includes(searchQuery.toLowerCase());
-
-        if (!matchesSearch) return false;
-
-        if (activeTab === "all") return true;
-        if (activeTab === "active") return ![DealStatus.COMPLETED, DealStatus.CANCELLED].includes(deal.status);
-        if (activeTab === "completed") return deal.status === DealStatus.COMPLETED;
-
-        return true;
-    });
+   const filteredDeals = Array.isArray(deals) ? deals.filter(deal => {
+    const matchesSearch = String(deal._id).includes(searchQuery);
+    if (!matchesSearch) return false;
+    if (activeTab === "all") return true;
+    if (activeTab === "active") return !["COMPLETED", "CANCELLED"].includes(deal.status);
+    if (activeTab === "completed") return deal.status === "COMPLETED";
+    return true;
+}) : [];
 
     return (
         <div className="space-y-6 container mx-auto py-6">
@@ -162,9 +65,14 @@ export default function DealDashboardPage() {
                 </TabsList>
 
                 <TabsContent value={activeTab} className="mt-6 space-y-4">
-                    {filteredDeals.length > 0 ? (
+                    {isLoading ? (
+                        <div className="flex justify-center items-center py-20">
+                            <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                            <span className="ml-2 text-purple-600 font-medium">Loading Deals...</span>
+                        </div>
+                    ) : filteredDeals?.length > 0 ? (
                         filteredDeals.map((deal) => (
-                            <DealCard key={deal.id} deal={deal} />
+                            <DealCard key={deal._id} deal={deal} />
                         ))
                     ) : (
                         <div className="text-center py-20 bg-gray-50 rounded-xl border-2 border-dashed border-gray-100">

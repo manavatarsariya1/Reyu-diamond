@@ -32,6 +32,7 @@ import ReputationPage from '@/pages/ReputationPage';
 import PaymentPage from '@/pages/PaymentPage';
 import EscrowDashboardPage from '@/pages/EscrowDashboardPage';
 import InventoryDetails from '@/components/inventory/InventoryDetails';
+import { StripeOnboardingBanner } from '@/components/payment/StripeOnboardingBanner';
 
 
 
@@ -91,6 +92,10 @@ const AppRoutes = createBrowserRouter([
         element: <PaymentPage />
     },
     {
+        path: "/x",
+        element:   <StripeOnboardingBanner />
+    },
+    {
         element: <DashboardLayout />,
         children: [
             {
@@ -139,7 +144,11 @@ const AppRoutes = createBrowserRouter([
             },
             {
                 path: "/deals/:id",
-                element: <DealDetailsPage />
+                element:  
+                <>
+                <StripeOnboardingBanner />
+                <DealDetailsPage />
+                </>
             },
             {
                 path: "/messages",

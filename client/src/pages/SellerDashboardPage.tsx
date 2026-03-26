@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { useSelector } from "react-redux";
-import type { RootState } from "@/app/store";
+import { useSelector, useDispatch } from "react-redux";
+import type { AppDispatch, RootState } from "@/app/store";
 import { auctionService } from "@/api/auctionService";
 import { bidService } from "@/api/bidService";
+import { createDealRequest } from "@/features/deal/dealSlice";
 import { BidStatus } from "@/types/bid";
 import type { Bid } from "@/types/bid";
 import { ListingStatus } from "@/types/listing";
@@ -15,14 +16,35 @@ import { Store, Plus, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 
+interface PopulatedAuction {
+    _id: string;
+    status: string;
+    startDate: string;
+    highestBidPrice: number;
+    basePrice: number;
+    bidIds?: string[];
+    inventoryId: {
+        sellerId: string;
+        shape: string;
+        carat: number;
+        color: string;
+        clarity: string;
+        lab: string;
+        barcode: string;
+        images?: string[];
+        location: string;
+    }
+}
+
 export default function SellerDashboardPage() {
+    const dispatch = useDispatch<AppDispatch>();
     const { user } = useSelector((state: RootState) => state.auth);
 
     const [listings, setListings] = useState<DiamondListing[]>([]);
     const [allBids, setAllBids] = useState<Record<string, Bid[]>>({});
     const [isLoading, setIsLoading] = useState(true);
 
-    const userId = (user as any)?._id || user?.id;
+    const userId = user?.id || (user as Record<string, unknown>)?._id as string;
 
     const fetchDashboardData = async () => {
         if (!userId) return;
@@ -30,16 +52,16 @@ export default function SellerDashboardPage() {
         try {
             // Fetch all auctions for this seller
             const sellerAuctions = await auctionService.getAuctions({ recipient: userId });
-            const activeSellerAuctions = sellerAuctions.filter((a: any) =>
+            const activeSellerAuctions = sellerAuctions.filter((a) =>
                 a.status === "ACTIVE" || a.status === "CLOSED"
-            );
+            ) as unknown as PopulatedAuction[];
 
             // Fetch bids for each auction and format listings
             const bidsMap: Record<string, Bid[]> = {};
             const fetchedListings: DiamondListing[] = [];
 
             for (const auction of activeSellerAuctions) {
-                const inv = auction.inventoryId as any;
+                const inv = auction.inventoryId;
 
                 fetchedListings.push({
                     id: auction._id, // Using auction._id as the primary identifier here to link with bids
@@ -63,7 +85,7 @@ export default function SellerDashboardPage() {
                 try {
                     const auctionBids = await bidService.getAllBids(auction._id);
                     bidsMap[auction._id] = auctionBids;
-                } catch (e) {
+                } catch {
                     console.error("Failed to fetch bids for auction", auction._id);
                     bidsMap[auction._id] = [];
                 }
@@ -81,15 +103,21 @@ export default function SellerDashboardPage() {
 
     useEffect(() => {
         fetchDashboardData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userId]);
 
     const handleAcceptBid = async (bidId: string) => {
         try {
             await bidService.updateBidStatus(bidId, BidStatus.ACCEPTED);
-            toast.success("Bid accepted! Listing is now locked.");
+
+            // Dispatch Redux Action to create deal
+            dispatch(createDealRequest(bidId));
+
             fetchDashboardData(); // Refresh UI
-        } catch (error: any) {
-            toast.error(error?.response?.data?.message || "Failed to accept bid");
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { message?: string } } };
+            toast.error(err?.response?.data?.message || "Failed to accept bid or create deal");
+            console.error("Deal creation error:", error);
         }
     };
 
@@ -98,14 +126,15 @@ export default function SellerDashboardPage() {
             await bidService.updateBidStatus(bidId, BidStatus.REJECTED);
             toast.info("Bid rejected.");
             fetchDashboardData(); // Refresh UI
-        } catch (error: any) {
-            toast.error(error?.response?.data?.message || "Failed to reject bid");
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { message?: string } } };
+            toast.error(err?.response?.data?.message || "Failed to reject bid");
         }
     };
 
     return (
         <div className="min-h-screen bg-gray-50/50">
-            <Navbar />
+            {/* <Navbar /> */}
             <div className="space-y-8 container mx-auto py-6">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">

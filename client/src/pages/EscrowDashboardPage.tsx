@@ -4,15 +4,40 @@ import { EscrowTimeline } from "@/components/payment/EscrowTimeline";
 import { DisputePanel } from "@/components/payment/DisputePanel";
 import { PaymentStatusBadge } from "@/components/payment/PaymentStatusBadge";
 import { PaymentStatus, DisputeStatus } from "@/types/payment";
-import { useState } from "react";
-import { Shield, Clock, ExternalLink } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Shield, Clock, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "@/app/store";
+import { fetchDealByIdRequest } from "@/features/deal/dealSlice";
 
 export default function EscrowDashboardPage() {
     const { dealId } = useParams();
-    // Mock state
-    const [status] = useState(PaymentStatus.IN_ESCROW);
+    const dispatch = useDispatch<AppDispatch>();
+    const { currentDeal: deal, isLoading } = useSelector((state: RootState) => state.deal);
     const [disputeStatus, setDisputeStatus] = useState(DisputeStatus.NONE);
+
+    useEffect(() => {
+        if (dealId) {
+            dispatch(fetchDealByIdRequest(dealId));
+        }
+    }, [dispatch, dealId]);
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+            </div>
+        );
+    }
+
+    if (!deal) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center text-slate-500">
+                Deal not found.
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -35,23 +60,24 @@ export default function EscrowDashboardPage() {
                                 <h2 className="text-lg font-semibold text-gray-900">Secure Escrow Account</h2>
                                 <div className="flex items-center gap-2 mt-1">
                                     <span className="text-sm text-gray-500">Current Status:</span>
-                                    <PaymentStatusBadge status={status} disputeStatus={disputeStatus} />
+                                    {/* Using deal.status directly if it matches PaymentStatus enum approximately */}
+                                    <PaymentStatusBadge status={deal.status as any} disputeStatus={disputeStatus} />
                                 </div>
                             </div>
                         </div>
 
                         <div className="text-right">
                             <p className="text-sm text-gray-400 uppercase tracking-wider">Funds Held</p>
-                            <p className="text-2xl font-bold text-gray-900">$12,500.00</p>
+                            <p className="text-2xl font-bold text-gray-900">${deal.agreedAmount?.toLocaleString()}</p>
                         </div>
                     </div>
 
-                    <EscrowTimeline status={status} />
+                    <EscrowTimeline status={deal.status as any} />
 
                     <div className="p-6 bg-slate-50 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div className="flex items-center gap-2 text-gray-600">
                             <Clock className="w-4 h-4" />
-                            Estimated Release: <span className="font-medium text-gray-900">Oct 24, 2024</span>
+                            Transaction Date: <span className="font-medium text-gray-900">{new Date(deal.createdAt).toLocaleDateString()}</span>
                         </div>
                         <div className="flex items-center gap-2 text-gray-600 md:justify-end">
                             <a href="#" className="flex items-center gap-1 hover:underline hover:text-blue-600">

@@ -48,7 +48,7 @@ export function RatingSubmissionCard({ deal, onSubmit, isSubmitted = false }: Ra
             <div className="p-8 flex flex-col items-center">
                 {/* Visual Context */}
                 <div className="mb-6 text-center">
-                    <p className="text-xs font-semibold tracking-wider text-gray-400 uppercase mb-2">Deal ID: {deal.id.slice(0, 8)}</p>
+                    <p className="text-xs font-semibold tracking-wider text-gray-400 uppercase mb-2">Deal ID: {deal._id?.slice(0, 8)}</p>
                     <div className="flex justify-center mb-4">
                         <StarRating
                             rating={rating}

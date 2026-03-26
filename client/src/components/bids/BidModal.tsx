@@ -28,7 +28,7 @@ export function BidModal({ listing, isOpen, onClose, onSubmit }: BidModalProps) 
     // Was using filter with !== which returned every OTHER auction except this one
    
     const auctionDetails = allAuctions?.find(
-        (item) => item.inventoryId._id === listing.id
+        (item) => item.inventoryId?._id === listing.id
     );
 
     console.log(auctionDetails, "auctiondetail")

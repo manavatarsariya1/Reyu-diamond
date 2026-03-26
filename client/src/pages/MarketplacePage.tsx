@@ -63,6 +63,7 @@ export default function MarketplacePage() {
             };
         });
 
+        console.log(inventoryItems)
     // Filter Logic
     const filteredListings = listings.filter(listing =>
         listing.shape.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -105,6 +106,26 @@ export default function MarketplacePage() {
             // We resolve immediately or you could watch Redux state for success tracking
             resolve();
         });
+    };
+
+    const handleCreateDeal = (listing: DiamondListing) => {
+        if (listing.sellerId === currentUserId) {
+            toast.error("You cannot buy your own listing.");
+            return;
+        }
+
+        const auction = auctions.find(a => a.inventoryId === listing.id && a.status === "ACTIVE");
+        if (!auction) {
+            toast.error("Active auction not found for this listing.");
+            return;
+        }
+
+        if (window.confirm(`Are you sure you want to buy this diamond right now for ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(listing.price)}?`)) {
+            dispatch({
+                type: "deal/createDirectDealRequest",
+                payload: auction._id
+            });
+        }
     };
 
     return (
@@ -154,6 +175,7 @@ export default function MarketplacePage() {
                                 listing={listing as any}
                                 isOwner={listing.sellerId === currentUserId}
                                 onPlaceBid={handlePlaceBid}
+                                onCreateDeal={handleCreateDeal}
                             />
                         ))}
                     </div>

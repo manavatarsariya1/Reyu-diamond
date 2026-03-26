@@ -6,6 +6,8 @@ import preferenceReducer from "../features/preference/preferenceSlice";
 import inventoryReducer from "../features/inventory/inventorySlice";
 import auctionReducer from "../features/auction/auctionSlice";
 import bidReducer from "../features/bid/bidSlice";
+import dealReducer from "../features/deal/dealSlice";
+import paymentReducer from "../features/payment/paymentSlice";
 
 
 import storage from "redux-persist/lib/storage";
@@ -40,6 +42,8 @@ const rootReducer = combineReducers({
    inventory: inventoryReducer,
    auction: auctionReducer,
    bid: bidReducer,
+   deal: dealReducer,
+   payment: paymentReducer,
    //   products: productReducer,
    //   wishlist: wishlistReducer,
    //   refresh: refreshReducer,
@@ -52,7 +56,7 @@ const rootReducer = combineReducers({
 const persistConfig: PersistConfig<RootReducerType> = {
    key: "root",
    storage,
-   whitelist: ["auth", "kyc", "preference", "inventory", "auction", "bid"], // We don't persist inventory data to avoid staleness, but it can be added here if desired.
+   whitelist: ["auth", "kyc", "preference", "inventory", "auction", "bid", "deal", "payment"],
 };
 
 /* ===============================

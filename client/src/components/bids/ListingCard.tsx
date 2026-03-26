@@ -23,7 +23,8 @@ interface ListingCardProps {
   listing: Listing;
   userId?: string;
   isOwner?: boolean;   // ← added
-  onPlaceBid?: (listing: Listing) => void;
+  onPlaceBid?: (listing: any) => void;
+  onCreateDeal?: (listing: any) => void;
 }
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (n: number) =>
@@ -87,7 +88,7 @@ function SpecCell({
 }
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
-export function ListingCard({ listing, userId, onPlaceBid, isOwner }: ListingCardProps) {
+export function ListingCard({ listing, userId, onPlaceBid, onCreateDeal, isOwner }: ListingCardProps) {
   //   const isOwner  = listing.sellerId === userId;
   const isLocked = listing.status === "LOCKED";
   //   const isActive = listing.status === "ACTIVE";
@@ -231,21 +232,39 @@ export function ListingCard({ listing, userId, onPlaceBid, isOwner }: ListingCar
           </Link>
 
           {!isOwner && (
-            <button
-              onClick={() => navigate(`/marketplace/${listing.id}`)}
-              className="
-                flex-1 h-[50px] flex items-center justify-center gap-2
-                bg-[#1a1612] rounded-[14px] text-[#faf8f4] text-[12.5px] font-semibold
-                tracking-[.04em] border-none cursor-pointer
-                shadow-[0_4px_20px_rgba(26,22,18,0.25)]
-                hover:shadow-[0_6px_28px_rgba(26,22,18,0.38)]
-                hover:scale-[0.98] active:scale-[0.96]
-                transition-all duration-200
-              "
-            >
-              <Gavel size={14} />
-              Place <span className="text-[#c9a96e]">Bid</span>
-            </button>
+            <div className="flex flex-1 gap-1.5">
+              {/* <button
+                onClick={() => onCreateDeal?.(listing)}
+                className="
+                    flex-1 h-[50px] flex items-center justify-center gap-1.5
+                    bg-[#c9a96e] rounded-[14px] text-white text-[12px] font-bold
+                    tracking-[.04em] border-none cursor-pointer
+                    shadow-[0_4px_15px_rgba(201,169,110,0.3)]
+                    hover:bg-[#b8985c] hover:shadow-[0_6px_20px_rgba(201,169,110,0.4)]
+                    hover:-translate-y-0.5 active:translate-y-0
+                    transition-all duration-200
+                "
+              >
+                <Package size={14} className="opacity-90" />
+                Buy Now
+              </button> */}
+
+              <button
+                onClick={() => navigate(`/marketplace/${listing.id}`)}
+                className="
+                  flex-1 h-[50px] flex items-center justify-center gap-1.5
+                  bg-[#1a1612] rounded-[14px] text-[#faf8f4] text-[12px] font-semibold
+                  tracking-[.04em] border-none cursor-pointer
+                  shadow-[0_4px_20px_rgba(26,22,18,0.25)]
+                  hover:shadow-[0_6px_28px_rgba(26,22,18,0.38)]
+                  hover:-translate-y-0.5 active:translate-y-0
+                  transition-all duration-200
+                "
+              >
+                <Gavel size={14} className="text-[#c9a96e]" />
+                Bid
+              </button>
+            </div>
           )}
         </div>
 

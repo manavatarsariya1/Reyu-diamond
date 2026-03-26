@@ -1,4 +1,4 @@
-import { DealStatus } from "@/types/deal";
+import type { DealStatus } from "@/types/deal";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 
@@ -8,18 +8,18 @@ interface LifecycleTrackerProps {
 
 export function LifecycleTracker({ currentStatus }: LifecycleTrackerProps) {
     const steps = [
-        { status: DealStatus.CREATED, label: "Created" },
-        { status: DealStatus.PAYMENT_PENDING, label: "Payment" },
-        { status: DealStatus.IN_ESCROW, label: "Escrow" },
-        { status: DealStatus.SHIPPED, label: "Shipped" },
-        { status: DealStatus.DELIVERED, label: "Delivered" },
-        { status: DealStatus.COMPLETED, label: "Complete" },
+        { status: "CREATED", label: "Created" },
+        { status: "PAYMENT_PENDING", label: "Payment" },
+        { status: "IN_ESCROW", label: "Escrow" },
+        { status: "SHIPPED", label: "Shipped" },
+        { status: "DELIVERED", label: "Delivered" },
+        { status: "COMPLETED", label: "Complete" },
     ];
 
     // Find current index
     const currentIndex = steps.findIndex(s => s.status === currentStatus);
-    const isCancelled = currentStatus === DealStatus.CANCELLED;
-    const isDisputed = currentStatus === DealStatus.DISPUTED;
+    const isCancelled = currentStatus === "CANCELLED";
+    const isDisputed = currentStatus === "DISPUTED";
 
     if (isCancelled || isDisputed) {
         return (

@@ -1,38 +1,28 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { SecurePaymentHeader } from "@/components/payment/SecurePaymentHeader";
 import { PaymentInitiationCard } from "@/components/payment/PaymentInitiationCard";
-import { useState, useEffect } from "react";
-// Mock Deal Type imports
-import type { Deal } from "@/types/deal.ts";
-import { DealStatus } from "@/types/deal.ts";
-import { PaymentStatus } from "@/types/payment";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "@/app/store";
+import { fetchDealByIdRequest } from "@/features/deal/dealSlice";
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 
-const MOCK_DEAL: Deal = {
-    id: "deal-123",
-    status: DealStatus.PAYMENT_PENDING,
-    listing: {
-        id: "l1",
-        sellerId: "seller-1",
-        name: "1.5ct Round Brilliant Diamond",
-        price: 12500,
-        specifications: { shape: "Round", carat: 1.5, color: "D", clarity: "VVS1" },
-        images: ["/placeholder.jpg"]
-    } as any,
-    buyerId: "buyer-1",
-    sellerId: "seller-1",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    // ...
-} as any;
+const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+const stripePromise = stripePublicKey ? loadStripe(stripePublicKey) : null;
 
 export default function PaymentPage() {
     const { dealId } = useParams();
     const navigate = useNavigate();
-    const [deal, setDeal] = useState<Deal | null>(null);
+
+    const dispatch = useDispatch<AppDispatch>();
+    const { currentDeal: deal, isLoading } = useSelector((state: RootState) => state.deal);
 
     useEffect(() => {
-        if (dealId) setDeal(MOCK_DEAL);
-    }, [dealId]);
+        if (dealId) {
+            dispatch(fetchDealByIdRequest(dealId));
+        }
+    }, [dispatch, dealId]);
 
     const handlePaymentInitiated = () => {
         // In real app, this would redirect to success or refresh status
@@ -40,7 +30,14 @@ export default function PaymentPage() {
         navigate(`/escrow/${dealId}`);
     };
 
-    if (!deal) return <div className="p-10 text-center">Loading secure invoice...</div>;
+    if (isLoading) return <div className="p-10 text-center animate-pulse text-gray-500 font-semibold tracking-wide">Loading secure invoice...</div>;
+    if (!deal) return <div className="p-10 text-center text-red-500 font-bold bg-red-50 rounded-xl m-4">Error: Transaction details not found.</div>;
+    if (!stripePublicKey) return (
+        <div className="p-10 text-center max-w-lg mx-auto mt-10 bg-rose-50 border border-rose-100 rounded-2xl shadow-sm">
+            <h2 className="text-xl font-bold text-rose-900 mb-2">Configuration Missing</h2>
+            <p className="text-rose-800/70 text-sm">The Stripe Public Key has not been configured in the environment. Please contact support or set <code>VITE_STRIPE_PUBLIC_KEY</code> in <code>.env</code>.</p>
+        </div>
+    );
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -53,10 +50,12 @@ export default function PaymentPage() {
                     </button>
                 </div>
 
-                <PaymentInitiationCard
-                    deal={deal}
-                    onPaymentInitiated={handlePaymentInitiated}
-                />
+                <Elements stripe={stripePromise}>
+                    <PaymentInitiationCard
+                        deal={deal}
+                        onPaymentInitiated={handlePaymentInitiated}
+                    />
+                </Elements>
             </div>
         </div>
     );

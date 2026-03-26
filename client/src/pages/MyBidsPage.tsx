@@ -71,7 +71,7 @@ export default function MyBidsPage() {
 
     return (
         <div className="gradient-luxury">
-            <Navbar />
+            {/* <Navbar /> */}
             <div className="space-y-6 container mx-auto p-6">
                 <div className="flex items-center gap-3">
                     <div className="p-3 bg-indigo-50 rounded-full text-indigo-600">

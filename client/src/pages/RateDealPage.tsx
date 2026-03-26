@@ -1,44 +1,26 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { RatingSubmissionCard } from "@/components/reputation/RatingSubmissionCard";
 import { useState, useEffect } from "react";
-// Mock Deal Type imports - ensuring no unused vars if I mock locally for now
-import { DealStatus, type Deal } from "@/types/deal.ts";
-
-// Mock Data
-const MOCK_DEAL: Deal = {
-    id: "deal-123",
-    status: DealStatus.COMPLETED,
-    listing: {
-        id: "l1",
-        sellerId: "seller-1",
-        price: 5000,
-        specifications: { shape: "Round", carat: 1.0, color: "D", clarity: "VVS1" } // Simplified mock
-    } as any, // casting for simplicity in mock
-    buyerId: "buyer-1",
-    sellerId: "seller-1",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    // ... other required fields would be here
-} as any;
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "@/app/store";
+import { fetchDealByIdRequest } from "@/features/deal/dealSlice";
 
 export default function RateDealPage() {
     const { dealId } = useParams();
     const navigate = useNavigate();
-    const [deal, setDeal] = useState<Deal | null>(null);
+    const dispatch = useDispatch<AppDispatch>();
+    const { currentDeal: deal, isLoading } = useSelector((state: RootState) => state.deal);
+
     const [submitted, setSubmitted] = useState(false);
 
-    // const deal = dealId
-    //     ? ({ ...MOCK_DEAL, id: dealId } as Deal)
-    //     : null;
-    
     useEffect(() => {
-        // Mock fetch deal
         if (dealId) {
-            setDeal({ ...MOCK_DEAL, id: dealId } as Deal);
+            dispatch(fetchDealByIdRequest(dealId));
         }
-    }, [dealId]);
+    }, [dispatch, dealId]);
 
     const handleRatingSubmit = (score: number, comment: string) => {
+        // TODO: Map to actual reputation API submission in backend
         console.log(`Submitted rating: ${score}, Comment: ${comment}`);
         setSubmitted(true);
         // Navigate back after delay
@@ -47,7 +29,9 @@ export default function RateDealPage() {
         }, 2000);
     };
 
-    if (!deal) return <div className="p-10 text-center">Loading deal...</div>;
+    if (isLoading) return <div className="p-10 text-center animate-pulse text-gray-500">Loading deal framework...</div>;
+    if (!deal) return <div className="p-10 text-center text-red-500">Error: Deal trace not found.</div>;
+
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">

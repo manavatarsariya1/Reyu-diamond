@@ -4,7 +4,9 @@ import preferenceWatcherSaga from "@/features/preference/preferenceSaga";
 import inventoryWatcherSaga from "@/features/inventory/inventorySaga";
 import { auctionWatcherSaga } from "@/features/auction/auctionSaga";
 import bidWatcherSaga from "@/features/bid/bidSaga";
-import { all } from "redux-saga/effects";
+import { watchDealSagas } from "@/features/deal/dealSaga";
+import { paymentSaga } from "@/features/payment/paymentSaga";
+import { all, fork } from "redux-saga/effects";
 
 export default function* rootSaga(): Generator {
   yield all([
@@ -15,6 +17,8 @@ export default function* rootSaga(): Generator {
     inventoryWatcherSaga(),
     auctionWatcherSaga(),
     bidWatcherSaga(),
+    fork(watchDealSagas),
+    fork(paymentSaga),
     // productSaga(),
     // refreshSaga(),
     // syncSaga(),

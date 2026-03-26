@@ -16,7 +16,7 @@ export function PDFAccessPanel() {
     };
 
     return (
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center justify-between">
             <div className="flex items-center gap-4">
                 <div className="h-12 w-12 bg-white rounded-lg border border-slate-200 flex items-center justify-center shadow-sm">
                     <FileText className="w-6 h-6 text-slate-500" />
@@ -34,7 +34,7 @@ export function PDFAccessPanel() {
 
             <Button
                 onClick={handleDownload}
-                className="bg-slate-900 hover:bg-slate-800 text-white shadow-sm"
+                className="bg-slate-900 hover:bg-slate-800 text-white shadow-sm mt-5"
                 disabled={isDownloading}
             >
                 {isDownloading ? (
