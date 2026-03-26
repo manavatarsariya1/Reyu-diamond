@@ -109,6 +109,9 @@ export const initiatePayment = async (req: Request, res: Response, next: NextFun
 export const stripeWebhookHandler = async (req: Request, res: Response) => {
     const sig = req.headers["stripe-signature"] as string;
 
+    console.log("🔔 Stripe Webhook received. Signature:", sig ? "Present" : "Missing");
+    console.log("Raw body length:", req.body ? req.body.length : 0);
+
     let event;
 
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -124,10 +127,10 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
             endpointSecret
         );
     } catch (err: any) {
-        console.log("❌ Webhook signature failed");
+        console.log("❌ Webhook signature verification failed:", err.message);
         await logService.createSystemLog({
             eventType: "WEBHOOK_ERROR",
-            targetId: null as any, // No user context here usually
+            targetId: null as any,
             severity: "ERROR",
             message: `Webhook signature verification failed: ${err.message}`,
             meta: { error: err.message, ip: req.ip }
@@ -135,7 +138,8 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
         return res.sendStatus(400);
     }
 
-    console.log("📩 Stripe Event:", event.type);
+    console.log("📩 Stripe Event Verified:", event.type);
+    console.log("Event Data Object ID:", event.data.object.id);
 
     try {
         /**
@@ -144,14 +148,21 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
         if (event.type === "payment_intent.succeeded") {
             const paymentIntent: any = event.data.object;
 
-            const escrow = await Escrow.findOne({
+            let escrow = await Escrow.findOne({
                 paymentIntentId: paymentIntent.id,
             });
 
+            if (!escrow && paymentIntent.metadata?.dealId) {
+                console.log("🔍 Escrow not found by paymentIntentId. Trying metadata.dealId:", paymentIntent.metadata.dealId);
+                escrow = await Escrow.findOne({ deal: paymentIntent.metadata.dealId });
+            }
+
             if (!escrow) {
-                console.log("⚠️ Escrow not found for:", paymentIntent.id);
+                console.log("⚠️ Escrow not found for paymentIntent.id:", paymentIntent.id);
+                // If we STILL can't find it, we can't update anything
                 return res.json({ received: true });
             }
+            console.log("✅ Found Escrow document:", escrow._id, "Status:", escrow.status);
 
             // Update escrow
             escrow.status = "HELD";
@@ -159,9 +170,16 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
             await escrow.save();
 
             // Update deal
-            await Deal.findByIdAndUpdate(escrow.deal, {
+            const updatedDeal = await Deal.findByIdAndUpdate(escrow.deal, {
                 status: "IN_ESCROW",
+                payment: {
+                    isPaid: true,
+                    paidAt: new Date(),
+                    method: paymentIntent.payment_method_types?.[0] || 'card',
+                    transactionId: paymentIntent.id
+                }
             });
+            console.log("✅ Updated Deal status to IN_ESCROW:", updatedDeal?._id);
 
             await logService.createSystemLog({
                 eventType: "PAYMENT_HELD",

@@ -22,8 +22,6 @@ const router = Router();
 
 router.use(protect, kycVerifiedOnly);
 
-router.post("/webhook", stripeWebhookHandler);
-
 router.post("/onboard", onboardUser);
 router.post("/payment-intent", validate(initiatePaymentSchema), initiatePayment);
 router.post("/release-payment", validate(releaseEscrowSchema), releaseEscrow);

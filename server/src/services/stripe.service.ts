@@ -110,18 +110,25 @@ export class StripeService {
                     existingEscrow.status !== "FAILED" &&
                     existingEscrow.status !== "CANCELLED"
                 ) {
-                    const retrievedIntent = await stripe.paymentIntents.retrieve(
-                        existingEscrow.paymentIntentId
-                    );
+                    try {
+                        const retrievedIntent = await stripe.paymentIntents.retrieve(
+                            existingEscrow.paymentIntentId
+                        );
 
-                    if (!retrievedIntent.client_secret) {
-                        throw new Error("Failed to retrieve client secret");
+                        if (retrievedIntent.client_secret) {
+                            return {
+                                clientSecret: retrievedIntent.client_secret,
+                                paymentIntentId: existingEscrow.paymentIntentId,
+                            };
+                        }
+                    } catch (retrieveError: any) {
+                        // If intent is missing on Stripe but we have it in DB, we'll create a new one
+                        if (retrieveError.code === 'resource_missing') {
+                            console.warn(`Payment intent ${existingEscrow.paymentIntentId} missing on Stripe. Creating a new one.`);
+                        } else {
+                            throw retrieveError;
+                        }
                     }
-
-                    return {
-                        clientSecret: retrievedIntent.client_secret,
-                        paymentIntentId: existingEscrow.paymentIntentId,
-                    };
                 }
             }
 
@@ -135,10 +142,6 @@ export class StripeService {
                 type: "ESCROW_PAYMENT",
             };
 
-            /**
-             * ⭐ IMPORTANT CHANGE ⭐
-             * card only + no redirects
-             */
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amountInCents,
                 currency: deal.currency.toLowerCase(),
@@ -151,17 +154,22 @@ export class StripeService {
                 throw new Error("Failed to generate client secret");
             }
 
-            // Create escrow
-            await Escrow.create({
-                deal: deal._id,
-                buyer: deal.buyerId,
-                seller: deal.sellerId,
-                amount: deal.agreedAmount,
-                currency: deal.currency.toLowerCase(),
-                status: "PENDING",
-                paymentIntentId: paymentIntent.id,
-                platformFeePercentage: 3,
-            });
+            // Create or update escrow atomically
+            await Escrow.findOneAndUpdate(
+                { deal: deal._id },
+                {
+                    $set: {
+                        buyer: deal.buyerId,
+                        seller: deal.sellerId,
+                        amount: deal.agreedAmount,
+                        currency: deal.currency.toLowerCase(),
+                        status: "PENDING",
+                        paymentIntentId: paymentIntent.id,
+                        platformFeePercentage: 3,
+                    }
+                },
+                { upsert: true, new: true, runValidators: true }
+            );
 
             return {
                 clientSecret: paymentIntent.client_secret,
@@ -204,24 +212,41 @@ export class StripeService {
             throw new Error("Seller Stripe account missing necessary capabilities (transfers). Please visit Stripe Dashboard or re-onboard.");
         }
 
-        // calculate fees
+        // Retrieve PaymentIntent to get Charge ID for source_transaction
+        const paymentIntent = await stripe.paymentIntents.retrieve(escrow.paymentIntentId);
+        const chargeId = paymentIntent.latest_charge as string;
+
+        if (!chargeId) {
+            throw new Error("No charge found for this payment intent. Cannot release funds.");
+        }
+
+        // Retrieve platform account to check if seller is the same (e.g. in test/dev)
+        const platformAccount = await stripe.accounts.retrieve();
+
         const totalAmount = Math.round(escrow.amount * 100);
         const platformFee = Math.round(
-            (totalAmount * escrow.platformFeePercentage) / 100
+            (totalAmount * (escrow.platformFeePercentage || 3)) / 100
         );
 
         const sellerAmount = totalAmount - platformFee;
 
-        // transfer to seller
-        const transfer = await stripe.transfers.create({
-            amount: sellerAmount,
-            currency: escrow.currency,
-            destination: seller.stripeAccountId,
-            metadata: {
-                dealId: dealId.toString(),
-                escrowId: escrow._id.toString(),
-            },
-        });
+        let transfer;
+        if (seller.stripeAccountId !== platformAccount.id) {
+            // transfer to seller
+            transfer = await stripe.transfers.create({
+                amount: sellerAmount,
+                currency: escrow.currency,
+                destination: seller.stripeAccountId,
+                source_transaction: chargeId,
+                metadata: {
+                    dealId: dealId.toString(),
+                    escrowId: escrow._id.toString(),
+                },
+            });
+        } else {
+            console.log(`[Stripe] Skipping transfer for Deal ${dealId} as destination is the platform account itself.`);
+            transfer = { id: 'manual_platform_internal' };
+        }
 
         if (isProduction) {
             const session = await mongoose.startSession();

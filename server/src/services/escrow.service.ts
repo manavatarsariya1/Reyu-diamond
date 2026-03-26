@@ -164,17 +164,33 @@ export const releaseEscrowService = async (
         throw new Error("No charge found for this payment intent");
     }
 
-    // Create Transfer
-    const transfer = await stripe.transfers.create({
-        amount: Math.round(escrow.amount * 100),
-        currency: escrow.currency.toLowerCase(),
-        destination: seller.stripeAccountId,
-        metadata: {
-            dealId: dealId,
-            escrowId: escrow._id.toString(),
-        },
-        source_transaction: chargeId,
-    });
+    // Retrieve platform account to check if seller is the same (e.g. in test/dev)
+    const platformAccount = await stripe.accounts.retrieve();
+
+    const totalAmount = Math.round(escrow.amount * 100);
+    const platformFee = Math.round(
+        (totalAmount * (escrow.platformFeePercentage || 3)) / 100
+    );
+    const sellerAmount = totalAmount - platformFee;
+
+    let transfer;
+
+    if (seller.stripeAccountId !== platformAccount.id) {
+        // Create Transfer
+        transfer = await stripe.transfers.create({
+            amount: sellerAmount,
+            currency: escrow.currency.toLowerCase(),
+            destination: seller.stripeAccountId,
+            metadata: {
+                dealId: dealId,
+                escrowId: escrow._id.toString(),
+            },
+            source_transaction: chargeId,
+        });
+    } else {
+        console.log(`[Stripe] Skipping transfer for Deal ${dealId} as destination is the platform account itself.`);
+        transfer = { id: 'manual_platform_internal' };
+    }
 
     escrow.stripeTransferId = transfer.id;
     escrow.status = "RELEASED";

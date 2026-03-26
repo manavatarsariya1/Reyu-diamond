@@ -18,6 +18,7 @@ import {
   notifyDisputeRaised,
   notifyDisputeResolved,
   notifyDealCancelled,
+  notifyDealCreated,
 } from "../services/notification.service.js";
 
 export const dealCreation = async (req: Request, res: Response, next: NextFunction) => {
@@ -373,7 +374,7 @@ export const directDealCreation = async (req: Request, res: Response, next: Next
     const { createBidService, updateBidStatusService } = await import("../services/bid.service.js");
     const { createSystemDealService } = await import("../services/deal.service.js");
 
-    const auction = await getAuctionByIdService(auctionId, buyerId);
+    const auction = await getAuctionByIdService(auctionId);
 
     // We assume the Buy It Now price is highestBidPrice OR basePrice.
     const price = (auction.highestBidPrice && auction.highestBidPrice > 0) ? auction.highestBidPrice : auction.basePrice;
@@ -395,7 +396,7 @@ export const directDealCreation = async (req: Request, res: Response, next: Next
     const updatedBid = await updateBidStatusService(
       bid._id.toString(),
       "ACCEPTED",
-      auction.inventoryId.sellerId.toString(), // spoof the seller's authority to accept
+      (auction.inventoryId as any).sellerId.toString(), // spoof the seller's authority to accept
       "admin" // spoof admin role to ensure success bypassing normal seller checks if needed.
     );
 
@@ -407,7 +408,7 @@ export const directDealCreation = async (req: Request, res: Response, next: Next
     const deal = await createSystemDealService(bid._id.toString());
 
     // Fire notifications
-    notifyDealCreated(deal).catch((err) =>
+    notifyDealCreated(deal).catch((err: any) =>
       console.error("Deal notification failed:", err)
     );
 

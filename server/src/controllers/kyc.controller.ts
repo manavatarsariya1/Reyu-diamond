@@ -136,7 +136,7 @@ export const getKycStatus = async (
       throw err;
     }
 
-    const result = await getKycStatusService(userId);
+    const result = await getKycStatusService(userId as string);
 
     return sendResponse({
       res,
