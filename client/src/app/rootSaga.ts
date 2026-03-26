@@ -6,6 +6,7 @@ import { auctionWatcherSaga } from "@/features/auction/auctionSaga";
 import bidWatcherSaga from "@/features/bid/bidSaga";
 import { watchDealSagas } from "@/features/deal/dealSaga";
 import { paymentSaga } from "@/features/payment/paymentSaga";
+import { chatSaga } from "@/features/chat/chatSaga";
 import { all, fork } from "redux-saga/effects";
 
 export default function* rootSaga(): Generator {
@@ -19,6 +20,7 @@ export default function* rootSaga(): Generator {
     bidWatcherSaga(),
     fork(watchDealSagas),
     fork(paymentSaga),
+    chatSaga(),
     // productSaga(),
     // refreshSaga(),
     // syncSaga(),

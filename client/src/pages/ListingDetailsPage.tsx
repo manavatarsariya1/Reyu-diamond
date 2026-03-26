@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
     Diamond, ArrowLeft, ShieldCheck, MapPin,
     Award, Info, Sparkles, Crown, Gavel, Clock,
-    TrendingUp, Loader2
+    TrendingUp, Loader2, MessageCircle
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import { useDispatch, useSelector } from "react-redux";
@@ -17,10 +17,12 @@ import { auctionService } from "@/api/auctionService";
 import { bidService } from "@/api/bidService";
 import type { InventoryItem } from "@/types/inventory";
 import type { Auction } from "@/types/auction";
+import { chatService } from "@/api/chatService";
 
 export default function ListingDetailsPage() {
     const { id } = useParams<{ id: string }>();
     const dispatch = useDispatch();
+    const navigate = useNavigate();
 
     const user = useSelector((state: RootState) => state.auth.user);
     const currentUserId = (user as any)?._id || user?.id;
@@ -31,6 +33,7 @@ export default function ListingDetailsPage() {
     const [isHighestBidFromCurrentUser, setIsHighestBidFromCurrentUser] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isBidModalOpen, setIsBidModalOpen] = useState(false);
+    const [isCreatingChat, setIsCreatingChat] = useState(false);
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -154,6 +157,39 @@ export default function ListingDetailsPage() {
         } catch (error: any) {
             toast.error(error?.response?.data?.message || error.message || "Failed to place bid");
             throw error;
+        }
+    };
+    const handleChatWithSeller = async () => {
+        if (!listing || !currentUserId) {
+            toast.error("Please login to chat with the seller");
+            return;
+        }
+        setIsCreatingChat(true);
+        try {
+            const contextId = auction?._id || listing._id;
+            const contextType = auction ? "Auction" : "Inventory";
+            
+            const conversation = await chatService.createConversation(
+                [listing.sellerId],
+                contextId,
+                contextType
+            );
+            
+            navigate(`/messages/${conversation._id}`);
+        } catch (error: any) {
+            if (error?.response?.status === 409) {
+                // Already exists, redirect anyway
+                const existingConversationId = error.response.data.data?._id;
+                if (existingConversationId) {
+                    navigate(`/messages/${existingConversationId}`);
+                } else {
+                    navigate("/messages");
+                }
+            } else {
+                toast.error(error?.response?.data?.message || "Failed to start chat");
+            }
+        } finally {
+            setIsCreatingChat(false);
         }
     };
 
@@ -297,6 +333,24 @@ export default function ListingDetailsPage() {
                                                     {isAuctionActive ? "Place Bid" : "Auction Ended"}
                                                 </Button>
                                             )}
+
+                                            {!isOwner && (
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="lg" 
+                                                    className="w-full text-base h-14 rounded-xl border-gray-200 hover:bg-gray-50 font-semibold text-gray-700 flex items-center gap-2 mt-3"
+                                                    onClick={handleChatWithSeller}
+                                                    disabled={isCreatingChat}
+                                                >
+                                                    {isCreatingChat ? (
+                                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                                    ) : (
+                                                        <MessageCircle className="w-5 h-5" />
+                                                    )}
+                                                    {isCreatingChat ? "Starting Chat..." : "Chat with Seller"}
+                                                </Button>
+                                            )}
+
                                             <p className="text-center text-sm text-gray-400 font-medium pt-3 flex items-center justify-center gap-2">
                                                 <ShieldCheck className="w-4 h-4 text-emerald-500" /> Secure Bidding Environment
                                             </p>
@@ -399,14 +453,14 @@ export default function ListingDetailsPage() {
                     clarity: listing.clarity as any,
                     certification: listing.lab as any,
                     reportNumber: listing.barcode,
-                    price: auction?.highestBidPrice > 0 ? auction.highestBidPrice : auction?.basePrice ?? listing.price,
+                    price: (auction?.highestBidPrice ?? 0) > 0 ? auction!.highestBidPrice : auction?.basePrice ?? listing.price,
                     minBidAmount: auction?.basePrice ?? listing.price * 0.9,
                     imageUrl: listing.images?.[0] || "",
                     location: listing.location,
                     status: listing.status as any,
                     createdAt: listing.createdAt,
                     totalBids: auction?.bidIds?.length || 0,
-                    currentHighestBid: auction?.highestBidPrice > 0 ? auction.highestBidPrice : undefined,
+                    currentHighestBid: (auction?.highestBidPrice ?? 0) > 0 ? auction?.highestBidPrice : undefined,
                 }}
                 isOpen={isBidModalOpen}
                 onClose={() => setIsBidModalOpen(false)}

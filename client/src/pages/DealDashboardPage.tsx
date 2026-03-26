@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Search, Filter, ShieldCheck, Loader2 } from "lucide-react";
 
+
+
 export default function DealDashboardPage() {
     const dispatch = useDispatch<AppDispatch>();
     const { deals, isLoading } = useSelector((state: RootState) => state.deal);

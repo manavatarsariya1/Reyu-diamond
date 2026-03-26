@@ -55,7 +55,7 @@ const Navbar: React.FC = () => {
 
         {user && (
           <div className="flex gap-3">
-            <Button variant={"outline"} onClick={() => navigate("/dashboard")} size="sm" className="cursor-pointer">
+            <Button variant={"outline"} onClick={() => navigate("/seller-dashboard")} size="sm" className="cursor-pointer">
               Dashboard
             </Button>
             <Button variant={"outline"} onClick={LogoutHandler} size="sm" className="cursor-pointer">

@@ -18,6 +18,8 @@ const statusAccent: Record<string, string> = {
     CANCELLED: "from-gray-500/5     border-l-gray-300",
 };
 
+
+
 export function DealCard({ deal }: DealCardProps) {
     const fmt = (n: number) =>
         new Intl.NumberFormat("en-US", { style: "currency", currency: deal.currency || "USD", maximumFractionDigits: 0 }).format(n);
@@ -38,7 +40,6 @@ export function DealCard({ deal }: DealCardProps) {
     const fmtDate = (d: string) =>
         d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
 
-    const isPaid = deal.payment?.isPaid;
 
     return (
         <Link
@@ -95,18 +96,6 @@ export function DealCard({ deal }: DealCardProps) {
                             </div>
                         </div>
 
-                        {/* Payment Status */}
-                        <div className="flex items-center gap-2">
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isPaid ? "bg-emerald-50" : "bg-amber-50"}`}>
-                                <CreditCard className={`w-3.5 h-3.5 ${isPaid ? "text-emerald-500" : "text-amber-500"}`} />
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">Payment</p>
-                                <p className={`text-sm font-bold leading-tight ${isPaid ? "text-emerald-600" : "text-amber-600"}`}>
-                                    {isPaid ? "Paid" : "Pending"}
-                                </p>
-                            </div>
-                        </div>
 
                         {/* Participants */}
                         <div className="flex items-center gap-2 hidden sm:flex">

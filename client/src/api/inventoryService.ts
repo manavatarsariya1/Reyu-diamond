@@ -33,8 +33,9 @@ function authHeaders() {
 export const inventoryService = {
 
 
-    fetchInventories: async (): Promise<InventoryItem[]> => {
+    fetchInventories: async (filters: any = {}): Promise<InventoryItem[]> => {
         const response = await api.get("/inventory", {
+            params: filters,
             headers: authHeaders(),
         });
         return response.data.data;

@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import type { AppDispatch, RootState } from "@/app/store";
 import { auctionService } from "@/api/auctionService";
 import { bidService } from "@/api/bidService";
+import { inventoryService } from "@/api/inventoryService";
 import { createDealRequest } from "@/features/deal/dealSlice";
 import { BidStatus } from "@/types/bid";
 import type { Bid } from "@/types/bid";
@@ -12,7 +13,7 @@ import { SellerBidPanel } from "@/components/bids/SellerBidPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Store, Plus, Loader2 } from "lucide-react";
+import { Store, Plus, Loader2, Package, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 
@@ -41,6 +42,7 @@ export default function SellerDashboardPage() {
     const { user } = useSelector((state: RootState) => state.auth);
 
     const [listings, setListings] = useState<DiamondListing[]>([]);
+    const [inventory, setInventory] = useState<any[]>([]);
     const [allBids, setAllBids] = useState<Record<string, Bid[]>>({});
     const [isLoading, setIsLoading] = useState(true);
 
@@ -56,6 +58,14 @@ export default function SellerDashboardPage() {
                 a.status === "ACTIVE" || a.status === "CLOSED"
             ) as unknown as PopulatedAuction[];
 
+            // Fetch all inventory for this seller using the new filter
+            try {
+                const sellerInventory = await inventoryService.fetchInventories({ sellerId: userId });
+                setInventory(sellerInventory.filter(item => item.status === "AVAILABLE" || item.status === "LISTED"));
+            } catch (invError) {
+                console.error("Failed to fetch seller inventory", invError);
+            }
+
             // Fetch bids for each auction and format listings
             const bidsMap: Record<string, Bid[]> = {};
             const fetchedListings: DiamondListing[] = [];
@@ -63,8 +73,14 @@ export default function SellerDashboardPage() {
             for (const auction of activeSellerAuctions) {
                 const inv = auction.inventoryId;
 
+                // Defensive check: if inventoryId is not populated or null
+                if (!inv || typeof inv === "string") {
+                    console.warn(`Auction ${auction._id} has unpopulated inventoryId`, inv);
+                    continue;
+                }
+
                 fetchedListings.push({
-                    id: auction._id, // Using auction._id as the primary identifier here to link with bids
+                    id: auction._id,
                     sellerId: inv.sellerId,
                     sellerName: "You",
                     shape: inv.shape,
@@ -160,56 +176,148 @@ export default function SellerDashboardPage() {
                         <span className="ml-2 text-purple-600 font-medium">Loading Dashboard...</span>
                     </div>
                 ) : (
-                    <div className="space-y-6">
-                        {listings.length === 0 ? (
-                            <div className="text-center py-20 bg-white rounded-xl border border-gray-100 shadow-sm">
-                                <Store className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-gray-900">No active listings</h3>
-                                <p className="text-gray-500 mt-1">You don't have any active auctions right now.</p>
-                            </div>
-                        ) : (
-                            listings.map(listing => (
-                                <div key={listing.id} className="flex flex-col lg:flex-row gap-6 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm transition-shadow hover:shadow-md">
-                                    {/* Listing Info */}
-                                    <div className="lg:w-1/3 space-y-4">
-                                        <div className="flex items-start justify-between">
-                                            <div>
-                                                <h3 className="text-lg font-bold text-gray-900">
-                                                    {listing.carat}ct {listing.shape} Diamond
-                                                </h3>
-                                                <p className="text-sm text-gray-500">{listing.location}</p>
-                                            </div>
-                                            <Badge variant={listing.status === ListingStatus.ACTIVE ? 'default' : 'secondary'} className="ml-2">
-                                                {listing.status}
-                                            </Badge>
-                                        </div>
-                                        <div className="text-3xl font-bold text-indigo-600">
-                                            ${(listing.price).toLocaleString()} <span className="text-sm font-normal text-gray-400">Current Price</span>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3 text-sm">
-                                            <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                                <span className="text-gray-500 block text-xs uppercase tracking-wider font-medium mb-1">Report</span>
-                                                <span className="font-semibold text-gray-900">{listing.reportNumber || 'N/A'}</span>
-                                            </div>
-                                            <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                                <span className="text-gray-500 block text-xs uppercase tracking-wider font-medium mb-1">Clarity/Color</span>
-                                                <span className="font-semibold text-gray-900">{listing.clarity} / {listing.color}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Bids Panel */}
-                                    <div className="lg:w-2/3">
-                                        <SellerBidPanel
-                                            listing={listing}
-                                            bids={allBids[listing.id] || []}
-                                            onAcceptBid={handleAcceptBid}
-                                            onRejectBid={handleRejectBid}
-                                        />
-                                    </div>
+                    <div className="space-y-10">
+                        {/* Stats Summary */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                                <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
+                                    <Package className="w-6 h-6" />
                                 </div>
-                            ))
-                        )}
+                                <div>
+                                    <p className="text-sm text-gray-500 font-medium">Total Inventory</p>
+                                    <h3 className="text-2xl font-bold text-gray-900">{inventory.length} Items</h3>
+                                </div>
+                            </div>
+                            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                                <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
+                                    <Store className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-500 font-medium">Active Auctions</p>
+                                    <h3 className="text-2xl font-bold text-gray-900">{listings.filter(l => l.status === ListingStatus.ACTIVE).length}</h3>
+                                </div>
+                            </div>
+                            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                                <div className="p-3 bg-amber-50 rounded-xl text-amber-600">
+                                    <Clock className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-500 font-medium">Total Bids Received</p>
+                                    <h3 className="text-2xl font-bold text-gray-900">
+                                        {Object.values(allBids).reduce((acc, current) => acc + current.length, 0)}
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Active Auctions Section */}
+                        <section className="space-y-4">
+                            <div className="flex items-center gap-2 px-1">
+                                <Store className="w-5 h-5 text-purple-600" />
+                                <h2 className="text-xl font-semibold text-gray-900">Active Auctions & Bids</h2>
+                            </div>
+                            
+                            {listings.length === 0 ? (
+                                <div className="text-center py-12 bg-white rounded-xl border border-gray-100 shadow-sm">
+                                    <p className="text-gray-500">No active auctions right now.</p>
+                                    <Button variant="link" asChild>
+                                        <Link to="/inventory">View Inventory to Start Auction</Link>
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    {listings.map(listing => (
+                                        <div key={listing.id} className="flex flex-col lg:flex-row gap-6 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm transition-shadow hover:shadow-md">
+                                            {/* Listing Info */}
+                                            <div className="lg:w-1/3 space-y-4">
+                                                <div className="flex items-start justify-between">
+                                                    <div>
+                                                        <h3 className="text-lg font-bold text-gray-900">
+                                                            {listing.carat}ct {listing.shape} Diamond
+                                                        </h3>
+                                                        <p className="text-sm text-gray-500">{listing.location}</p>
+                                                    </div>
+                                                    <Badge variant={listing.status === ListingStatus.ACTIVE ? 'default' : 'secondary'} className="ml-2">
+                                                        {listing.status}
+                                                    </Badge>
+                                                </div>
+                                                <div className="text-3xl font-bold text-indigo-600">
+                                                    ${(listing.price).toLocaleString()} <span className="text-sm font-normal text-gray-400">Current Price</span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                                        <span className="text-gray-500 block text-xs uppercase tracking-wider font-medium mb-1">Report</span>
+                                                        <span className="font-semibold text-gray-900">{listing.reportNumber || 'N/A'}</span>
+                                                    </div>
+                                                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                                        <span className="text-gray-500 block text-xs uppercase tracking-wider font-medium mb-1">Clarity/Color</span>
+                                                        <span className="font-semibold text-gray-900">{listing.clarity} / {listing.color}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Bids Panel */}
+                                            <div className="lg:w-2/3">
+                                                <SellerBidPanel
+                                                    listing={listing}
+                                                    bids={allBids[listing.id] || []}
+                                                    onAcceptBid={handleAcceptBid}
+                                                    onRejectBid={handleRejectBid}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+
+                        {/* Recent Inventory Section */}
+                        <section className="space-y-4">
+                            <div className="flex items-center gap-2 px-1">
+                                <Package className="w-5 h-5 text-emerald-600" />
+                                <h2 className="text-xl font-semibold text-gray-900">Available Inventory</h2>
+                            </div>
+                            
+                            {inventory.length === 0 ? (
+                                <div className="text-center py-12 bg-white rounded-xl border border-gray-100 shadow-sm">
+                                    <p className="text-gray-500">No available inventory items found.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {inventory.slice(0, 6).map(item => (
+                                        <div key={item._id} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex gap-4 items-center">
+                                            <div className="w-16 h-16 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0">
+                                                {item.images?.[0] ? (
+                                                    <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                                        <Package className="w-6 h-6" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-semibold text-gray-900 truncate">{item.carat}ct {item.shape}</h4>
+                                                <p className="text-xs text-gray-500 truncate">{item.barcode}</p>
+                                                <div className="flex items-center justify-between mt-1">
+                                                    <span className="text-sm font-bold text-indigo-600">${item.price.toLocaleString()}</span>
+                                                    <Link 
+                                                        to={item.status === 'AVAILABLE' ? '/inventory' : `/marketplace/${item._id}`}
+                                                        className="text-xs text-blue-600 hover:underline font-medium"
+                                                    >
+                                                        Details
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {inventory.length > 6 && (
+                                        <Link to="/inventory" className="bg-gray-50 p-4 rounded-xl border border-dashed border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors group">
+                                            <span className="font-medium group-hover:text-gray-900">View all {inventory.length} items</span>
+                                        </Link>
+                                    )}
+                                </div>
+                            )}
+                        </section>
                     </div>
                 )}
             </div>

@@ -8,6 +8,7 @@ import auctionReducer from "../features/auction/auctionSlice";
 import bidReducer from "../features/bid/bidSlice";
 import dealReducer from "../features/deal/dealSlice";
 import paymentReducer from "../features/payment/paymentSlice";
+import chatReducer from "../features/chat/chatSlice";
 
 
 import storage from "redux-persist/lib/storage";
@@ -44,6 +45,7 @@ const rootReducer = combineReducers({
    bid: bidReducer,
    deal: dealReducer,
    payment: paymentReducer,
+   chat: chatReducer,
    //   products: productReducer,
    //   wishlist: wishlistReducer,
    //   refresh: refreshReducer,
@@ -56,7 +58,7 @@ const rootReducer = combineReducers({
 const persistConfig: PersistConfig<RootReducerType> = {
    key: "root",
    storage,
-   whitelist: ["auth", "kyc", "preference", "inventory", "auction", "bid", "deal", "payment"],
+   whitelist: ["auth", "kyc", "preference", "inventory", "auction", "bid", "deal", "payment", "chat"],
 };
 
 /* ===============================
