@@ -9,7 +9,7 @@ import {
   getAllMyBidsService,
 } from "../services/bid.service.js";
 import { createSystemDealService } from "../services/deal.service.js";
-import { notifyDealCreated, notifyAuctionOwnerNewBid } from "../services/notification.service.js";
+import { notifyDealCreated, notifyAuctionOwnerNewBid, notifyBidderSuccess } from "../services/notification.service.js";
 
 export const createBid = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -53,6 +53,13 @@ export const createBid = async (req: Request, res: Response, next: NextFunction)
       buyerName: (req as any).user?.username ?? "A buyer",
       bidAmount,
     }).catch((err) => console.error("New bid notification failed:", err));
+
+    // notify bidder as well
+    notifyBidderSuccess({
+      buyerId,
+      auctionId,
+      bidAmount,
+    }).catch((err) => console.error("Bidder success notification failed:", err));
 
     return sendResponse({
       res,

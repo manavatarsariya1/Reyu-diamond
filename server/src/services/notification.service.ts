@@ -9,6 +9,7 @@ import { Advertisement } from "../models/Advertisement.model.js";
 import type { ISystemLog } from "../models/SystemLog.model.js";
 import Deal from "../models/Deal.model.js";
 import Notification from "../models/Notification.model.js";
+import { getIO } from "../socket.js";
 
 export const notifyAdminsForKyc = async (userId: string) => {
   const notification = {
@@ -34,13 +35,16 @@ export const notifyAuctionOwnerNewBid = async ({
   bidAmount: number;
 }) => {
   try {
-    const auction = await Auction.findById(auctionId).select("inventoryId");
+    const auction = await Auction.findById(auctionId).select("inventoryId recipient");
     if (!auction) return;
 
-    const inventory = await Inventory.findById(auction.inventoryId).select("sellerId");
-    if (!inventory) return;
+    let ownerId = auction.recipient?.toString();
 
-    const ownerId = inventory.sellerId.toString();
+    if (!ownerId) {
+      const inventory = await Inventory.findById(auction.inventoryId).select("sellerId");
+      if (!inventory) return;
+      ownerId = inventory.sellerId.toString();
+    }
     const notification = {
       title: "New Bid Received!",
       body: `${buyerName} placed a bid of ₹${bidAmount} on your auction.`,
@@ -57,6 +61,34 @@ export const notifyAuctionOwnerNewBid = async ({
     console.log(`New bid notification sent to auction owner ${ownerId}`);
   } catch (error: any) {
     console.error("Error in notifyAuctionOwnerNewBid:", error.message);
+  }
+};
+
+export const notifyBidderSuccess = async ({
+  buyerId,
+  auctionId,
+  bidAmount,
+}: {
+  buyerId: string;
+  auctionId: string;
+  bidAmount: number;
+}) => {
+  try {
+    const notification = {
+      title: "Bid Placed Successfully!",
+      body: `You have successfully placed a bid of ₹${bidAmount} for auction #${auctionId}.`,
+    };
+    const data = {
+      type: "BID_SUCCESS",
+      auctionId,
+      bidAmount: String(bidAmount),
+    };
+
+    await saveNotification(buyerId, notification, data);
+    // FCM is optional for bidder success if they are already in the app, but let's include it.
+    await sendFcmToUser(buyerId, notification, data);
+  } catch (error: any) {
+    console.error("Error in notifyBidderSuccess:", error.message);
   }
 };
 
@@ -173,7 +205,16 @@ const saveNotification = async (
       type: data.type || "GENERAL",
     };
     if (senderId) notificationObj.sender = senderId;
-    await Notification.create(notificationObj);
+    const newNotif = await Notification.create(notificationObj);
+
+    // Real-time socket emission
+    try {
+      const io = getIO();
+      // Emit to the recipient's personal room
+      io.to(recipientId).emit("new_notification", newNotif);
+    } catch (socketErr) {
+      console.error("Socket emission failed for notification:", socketErr);
+    }
   } catch (error) {
     console.error("Error saving notification to DB:", error);
   }
