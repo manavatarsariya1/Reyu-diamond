@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { Diamond } from "lucide-react";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 // import type { RootState } from "@/app/store";
 import type { RootState } from "@/app/store";
 import { logout } from "@/features/auth/auth.Slice";
+import NotificationBell from "../notifications/NotificationBell";
 
 
 const Navbar: React.FC = () => {
@@ -46,7 +47,7 @@ const Navbar: React.FC = () => {
             </Link>
 
             <Link to="/register">
-              <Button variant="hero" size="sm">
+              <Button size="sm">
                 Create Account
               </Button>
             </Link>
@@ -54,7 +55,8 @@ const Navbar: React.FC = () => {
         )}
 
         {user && (
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3">
+            <NotificationBell />
             <Button variant={"outline"} onClick={() => navigate("/seller-dashboard")} size="sm" className="cursor-pointer">
               Dashboard
             </Button>

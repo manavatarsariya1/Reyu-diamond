@@ -15,12 +15,14 @@ export interface User {
 export interface LoginPayload {
   email: string;
   password: string;
+  fcmToken?: string;
 }
 
 export interface RegisterPayload {
   username: string;
   email: string;
   password: string;
+  fcmToken?: string;
 }
 
 export interface VerifyOtpPayload {

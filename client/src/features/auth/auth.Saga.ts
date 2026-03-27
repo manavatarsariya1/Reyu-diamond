@@ -16,12 +16,15 @@ import {
     verifyOtpRequested,
 } from "./auth.Slice";
 import { authService } from "../../api/authService";
+import { requestFCMToken } from "../../utils/firebase";
 import type { LoginPayload, User, RegisterPayload, VerifyOtpPayload, ResendOtpPayload } from "../../api/authService";
 
 // 🔥 LOGIN WORKER
 function* loginWorker(action: PayloadAction<LoginPayload>) {
     try {
-        const user: User = yield call([authService, authService.login], action.payload);
+        const fcmToken: string | null = yield call(requestFCMToken);
+        const loginPayload = { ...action.payload, fcmToken: fcmToken || undefined };
+        const user: User = yield call([authService, authService.login], loginPayload);
         yield put(loginSucceeded(user));
     } catch (error: any) {
         // yield put(loginFailed(error.message || "Login failed"));
@@ -37,9 +40,11 @@ function* loginWorker(action: PayloadAction<LoginPayload>) {
 // 🔥 REGISTER WORKER
 function* registerWorker(action: PayloadAction<RegisterPayload>) {
     try {
+        const fcmToken: string | null = yield call(requestFCMToken);
+        const registerPayload = { ...action.payload, fcmToken: fcmToken || undefined };
         const response: { message: string } = yield call(
             [authService, authService.register],
-            action.payload
+            registerPayload
         );
 
         yield put(registerSucceeded(response));
@@ -74,7 +79,7 @@ function* verifyOtpWorker(action: PayloadAction<VerifyOtpPayload>) {
 function* resendOtpWorker(action: PayloadAction<ResendOtpPayload>) {
     try {
         yield call([authService, authService.resendOtp], action.payload);
-        yield put(resendOtpSucceeded());
+        yield put(resendOtpSucceeded("OTP has been resent to your email address"));
     } catch (error: any) {
         yield put(resendOtpFailed(error.message || "Failed to resend OTP"));
     }

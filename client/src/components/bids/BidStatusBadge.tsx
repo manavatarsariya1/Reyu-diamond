@@ -36,7 +36,8 @@ export function BidStatusBadge({ status, className }: BidStatusBadgeProps) {
         },
     };
 
-    const { label, icon: Icon, style } = config[status];
+    const currentStatus = config[status] || config[BidStatus.SUBMITTED];
+    const { label, icon: Icon, style } = currentStatus;
 
     return (
         <span className={cn(

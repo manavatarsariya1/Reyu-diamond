@@ -57,6 +57,18 @@ class SocketService {
     }
   }
 
+  onNewNotification(callback: (notification: any) => void) {
+    if (this.socket) {
+      this.socket.on("new_notification", callback);
+    }
+  }
+
+  offNewNotification() {
+    if (this.socket) {
+      this.socket.off("new_notification");
+    }
+  }
+
   getSocket() {
     return this.socket;
   }

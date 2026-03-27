@@ -49,8 +49,12 @@ export default function SellerDashboardPage() {
     const userId = user?.id || (user as Record<string, unknown>)?._id as string;
 
     const fetchDashboardData = async () => {
-        if (!userId) return;
+        if (!userId) {
+            setIsLoading(false);
+            return;
+        }
         setIsLoading(true);
+        console.log("Fetching dashboard data for user", userId);
         try {
             // Fetch all auctions for this seller
             const sellerAuctions = await auctionService.getAuctions({ recipient: userId });
@@ -150,7 +154,7 @@ export default function SellerDashboardPage() {
 
     return (
         <div className="min-h-screen bg-gray-50/50">
-            {/* <Navbar /> */}
+        
             <div className="space-y-8 container mx-auto py-6">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
