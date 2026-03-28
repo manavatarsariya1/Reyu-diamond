@@ -23,15 +23,15 @@ class RatingService {
                 throw new Error("Deal not found");
             }
 
-            if (deal.status !== "COMPLETED") {
-                throw new Error("Deal must be completed to submit a rating");
+            if (deal.status !== "COMPLETED" && deal.status !== "CANCELLED") {
+                throw new Error("Only completed or cancelled deals can be rated");
             }
 
             let targetId: string;
 
-            if (deal.buyerId.toString() === raterId) {
+            if (deal.buyerId.equals(raterId)) {
                 targetId = deal.sellerId.toString();
-            } else if (deal.sellerId.toString() === raterId) {
+            } else if (deal.sellerId.equals(raterId)) {
                 targetId = deal.buyerId.toString();
             } else {
                 throw new Error("User was not part of this deal");
@@ -150,6 +150,55 @@ class RatingService {
             .populate("raterId", "username") // Show who rated
             .populate("dealId", "agreedAmount currency") // Show deal context
             .sort({ createdAt: -1 });
+    }
+
+    async getRatingByDeal(dealId: string, raterId: string) {
+        return await Rating.findOne({ dealId, raterId });
+    }
+
+    async getUserReputation(userId: string) {
+        const user = await User.findById(userId).select("username rating badges createdAt isKycVerified");
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        const ratings = await Rating.find({ targetId: userId })
+            .populate("raterId", "username")
+            .populate("dealId", "agreedAmount currency")
+            .sort({ createdAt: -1 });
+
+        // Calculate distribution
+        const distribution = {
+            1: 0,
+            2: 0,
+            3: 0,
+            4: 0,
+            5: 0
+        };
+
+        ratings.forEach(r => {
+            const score = Math.round(r.score) as keyof typeof distribution;
+            if (distribution[score] !== undefined) {
+                distribution[score]++;
+            }
+        });
+
+        return {
+            user: {
+                _id: user._id,
+                username: user.username,
+                rating: user.rating,
+                badges: user.badges,
+                createdAt: user.createdAt,
+                isKycVerified: user.isKycVerified
+            },
+            stats: {
+                averageScore: user.rating?.average || 0,
+                totalRatings: user.rating?.count || 0,
+                distribution
+            },
+            recentRatings: ratings.slice(0, 10) // Return last 10 for overview
+        };
     }
 }
 

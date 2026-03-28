@@ -28,7 +28,7 @@ const httpServer = createServer(app);
 
 app.post(
   "/webhook",
-  express.raw({ type: "application/json" }),
+  express.raw({ type: "*/*" }),
   stripeWebhookHandler
 );
 

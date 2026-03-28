@@ -21,6 +21,8 @@ export interface IUser extends Document {
     count: number;
   };
   badges: string[];
+  createdAt: Date;
+  updatedAt: Date;
   comparePassword(enteredPassword: string): Promise<boolean>;
 }
 

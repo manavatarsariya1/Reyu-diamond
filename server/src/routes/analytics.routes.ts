@@ -5,9 +5,18 @@ import isAdmin from "../middlewares/admin.middleware.js";
 
 const router = Router();
 
-router.use(authMiddleware, isAdmin);
+router.use(authMiddleware);
 
-// Get dashboard stats
+// Get user specific dashboard stats (Authenticated users)
+router.get(
+    "/user/dashboard",
+    analyticsController.getUserDashboardStats
+);
+
+// Admin only routes
+router.use(isAdmin);
+
+// Get admin dashboard stats
 router.get(
     "/dashboard",
     analyticsController.getDashboardStats

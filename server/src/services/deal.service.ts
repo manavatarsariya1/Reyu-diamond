@@ -54,6 +54,9 @@ export const createDealService = async (bidId: string, userId: string) => {
     }]
   });
 
+  // Update inventory status to SOLD
+  await Inventory.findByIdAndUpdate(auction.inventoryId, { status: "SOLD", locked: true });
+
   return deal;
 };
 
@@ -99,6 +102,9 @@ export const createSystemDealService = async (bidId: string) => {
       changedAt: new Date(),
     }]
   });
+
+  // Update inventory status to SOLD
+  await Inventory.findByIdAndUpdate(auction.inventoryId, { status: "SOLD", locked: true });
 
   return deal;
 };
@@ -159,11 +165,15 @@ export const getallDealsService = async (
   const filter: any = {};
 
   if (isAdmin) {
+    // Admin can see all deals, or filter by a specific user if targetUserId is provided
     if (targetUserId && mongoose.Types.ObjectId.isValid(targetUserId)) {
-      const target = new mongoose.Types.ObjectId(targetUserId);
+      const target = new mongoose.Types.ObjectId(targetUserId as string);
       filter.$or = [{ buyerId: target }, { sellerId: target }];
     }
+    // if no targetUserId, filter remains {} (all deals)
   } else {
+    // Normal users MUST only see their own deals
+    const uid = new mongoose.Types.ObjectId(userId);
     filter.$or = [{ buyerId: uid }, { sellerId: uid }];
   }
 
@@ -354,6 +364,17 @@ export const cancelDealService = async (
 
     if (!updatedDeal) {
       throw new Error("Failed to cancel deal: Update returned null");
+    }
+
+    // Reset inventory to AVAILABLE if deal is cancelled
+    if (deal.auctionId) {
+        const auction = await Auction.findById(deal.auctionId);
+        if (auction) {
+            await Inventory.findByIdAndUpdate(auction.inventoryId, {
+                status: "AVAILABLE",
+                locked: false
+            });
+        }
     }
 
     if (process.env.NODE_ENV !== "development") {

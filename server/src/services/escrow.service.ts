@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import User from "../models/User.model.js";
 import Deal from "../models/Deal.model.js";
 import Escrow from "../models/Escrow.model.js";
+import Inventory from "../models/Inventory.model.js";
+import { Auction } from "../models/Auction.model.js";
 
 import stripeHelper from "../utils/stripe.utility.js"; // Renamed to avoid name clash if any, but default export is the instance
 import { stripeService } from "./stripe.service.js";
@@ -270,6 +272,20 @@ export const refundEscrowService = async (
         },
         { runValidators: false }
     );
+
+    // Reset inventory to AVAILABLE on refund/cancel
+    if (escrow.deal) {
+        const dealObj = await Deal.findById(escrow.deal);
+        if (dealObj && dealObj.auctionId) {
+            const auction = await Auction.findById(dealObj.auctionId);
+            if (auction) {
+                await Inventory.findByIdAndUpdate(auction.inventoryId, {
+                    status: "AVAILABLE",
+                    locked: false
+                });
+            }
+        }
+    }
 
     return refund;
 };

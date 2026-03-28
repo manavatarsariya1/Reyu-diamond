@@ -100,7 +100,7 @@ export class StripeService {
      */
     async createPaymentIntent(
         deal: any
-    ): Promise<{ clientSecret: string; paymentIntentId: string }> {
+    ): Promise<{ clientSecret: string; paymentIntentId: string; status?: string }> {
         try {
             // Prevent duplicate escrow
             const existingEscrow = await Escrow.findOne({ deal: deal._id });
@@ -114,6 +114,32 @@ export class StripeService {
                         const retrievedIntent = await stripe.paymentIntents.retrieve(
                             existingEscrow.paymentIntentId
                         );
+
+                        if (retrievedIntent.status === "succeeded") {
+                            // Idempotency safety: if Stripe says it's paid but our DB doesn't, sync it now
+                            if (existingEscrow.status === "PENDING") {
+                                existingEscrow.status = "HELD";
+                                await existingEscrow.save();
+
+                                await Deal.findByIdAndUpdate(deal._id, {
+                                    $set: { 
+                                        status: "IN_ESCROW",
+                                        payment: {
+                                            isPaid: true,
+                                            paidAt: new Date(),
+                                            method: retrievedIntent.payment_method_types?.[0] || 'card',
+                                            transactionId: retrievedIntent.id
+                                        }
+                                    }
+                                });
+                            }
+
+                            return {
+                                clientSecret: retrievedIntent.client_secret!,
+                                paymentIntentId: existingEscrow.paymentIntentId,
+                                status: "succeeded"
+                            };
+                        }
 
                         if (retrievedIntent.client_secret) {
                             return {

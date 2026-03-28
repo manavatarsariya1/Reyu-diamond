@@ -58,3 +58,30 @@ export const getRevenueAnalytics = async (
         next(error);
     }
 };
+
+export const getUserDashboardStats = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const userId = (req as any).user?.id;
+        if (!userId) {
+            const err: any = new Error("Unauthorized");
+            err.statusCode = 401;
+            throw err;
+        }
+
+        const stats = await dashboardService.getUserDashboardStats(userId);
+
+        return sendResponse({
+            res,
+            statusCode: 200,
+            success: true,
+            message: "User dashboard stats fetched successfully",
+            data: stats,
+        });
+    } catch (error) {
+        next(error);
+    }
+};

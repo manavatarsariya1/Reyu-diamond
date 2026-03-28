@@ -67,11 +67,16 @@ export const getAdvertisements = async (
 
         const loggedInUser = (req as any).user;
         const userRole = (req as any).userRole || loggedInUser.role;
-        let userId = loggedInUser.id;
+        let userId = undefined;
 
-        // If admin provides a specific userId, use that instead
-        if (userRole === 'admin' && req.params.userId) {
-            userId = req.params.userId;
+        // If admin, they can see all. If not admin, they only see their own.
+        // If admin provides a specific userId in params, fetch for that user.
+        if (userRole === 'admin') {
+            if (req.params.userId) {
+                userId = req.params.userId;
+            }
+        } else {
+            userId = loggedInUser.id;
         }
 
         const query = {
@@ -172,6 +177,49 @@ export const updateAdvertisementStatus = async (
             success: true,
             message: "Advertisement status updated successfully",
             data: advertisement
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getActiveAdvertisements = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<any> => {
+    try {
+        const { section } = req.query;
+        const result = await advertisementService.getAdvertisements({
+            status: "APPROVED",
+            section: section as string
+        });
+
+        return sendResponse({
+            res,
+            statusCode: 200,
+            success: true,
+            message: "Active advertisements fetched successfully",
+            data: result.advertisements
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+export const deleteAdvertisement = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<any> => {
+    try {
+        const { advertisementId } = req.params;
+        await advertisementService.deleteAdvertisement(advertisementId as string);
+
+        return sendResponse({
+            res,
+            statusCode: 200,
+            success: true,
+            message: "Advertisement deleted successfully",
         });
     } catch (error) {
         next(error);

@@ -37,9 +37,9 @@ export const createAuctionService = async ({
             throw new Error("Inventory is already in auction");
         }
 
-        // 🚫 Only AVAILABLE inventory can be listed
-        if (inventory.status !== "AVAILABLE") {
-            throw new Error("Inventory must be AVAILABLE to create auction");
+        // 🚫 Only AVAILABLE or AUCTION_ENDED inventory can be listed
+        if (inventory.status !== "AVAILABLE" && inventory.status !== "AUCTION_ENDED") {
+            throw new Error("Inventory must be AVAILABLE or AUCTION_ENDED to create auction");
         }
         if (inventory.price > basePrice) {
             throw new Error("Base price must be greater than inventory price");

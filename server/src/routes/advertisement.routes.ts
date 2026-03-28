@@ -9,6 +9,9 @@ import isAdmin from "../middlewares/admin.middleware.js";
 
 const router = Router();
 
+// Public routes
+router.get("/active", advertisementController.getActiveAdvertisements);
+
 router.use(authMiddleware, loadUserRole);
 
 router.get("/",
@@ -26,8 +29,13 @@ router.post(
     upload.fields([
         { name: "media", maxCount: 1 },
     ]),
-    owner(Inventory, "sellerId", "inventoryId"),
     advertisementController.createAdvertisement
+);
+
+router.delete(
+    "/:advertisementId",
+    ownerOrAdmin(Advertisement, "advertiserId", "advertisementId"),
+    advertisementController.deleteAdvertisement
 );
 
 // Admin routes

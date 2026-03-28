@@ -1,6 +1,6 @@
 import mongoose, { Document, Model } from "mongoose";
 
-export type InventoryStatus = "AVAILABLE" | "NOT_AVAILABLE" | "LISTED" | "SOLD" | "ON_MEMO";
+export type InventoryStatus = "AVAILABLE" | "NOT_AVAILABLE" | "LISTED" | "SOLD" | "ON_MEMO" | "AUCTION_ENDED";
 
 export interface IInventory extends Document {
   sellerId: mongoose.Types.ObjectId;
@@ -127,7 +127,7 @@ const inventorySchema = new mongoose.Schema<IInventory>(
 
     status: {
       type: String,
-      enum: ["AVAILABLE", "NOT_AVAILABLE", "LISTED", "SOLD", "ON_MEMO"],
+      enum: ["AVAILABLE", "NOT_AVAILABLE", "LISTED", "SOLD", "ON_MEMO", "AUCTION_ENDED"],
       default: "AVAILABLE",
     },
 

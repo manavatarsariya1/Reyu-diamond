@@ -33,6 +33,7 @@ export const sanitizeUser = (user: IUser) => {
     isVerified: user.isVerified,
     accountStatus: user.accountStatus,
     isKycVerified: user.isKycVerified,
+    stripeAccountId: user.stripeAccountId,
   };
 };
 
@@ -126,7 +127,7 @@ export const loginUser = async (
 export const getUserById = async (
   userId: string
 ): Promise<IUser | null> => {
-  const user = await User.findById(userId).select("-password -otp -otpAttempts -fcmToken -__v -createdAt -updatedAt -lastOtpSent");
+  const user = await User.findById(userId).select("-password -otp -otpAttempts -fcmToken -__v -createdAt -updatedAt -lastOtpSent +stripeAccountId");
   return user;
 };
 
@@ -138,7 +139,7 @@ export const upadteUserById = async (
     userId,
     updateData,
     { new: true }
-  ).select("-password -otp -otpAttempts -fcmToken -__v -createdAt -updatedAt -lastOtpSent");
+  ).select("-password -otp -otpAttempts -fcmToken -__v -createdAt -updatedAt -lastOtpSent +stripeAccountId");
   return user;
 };
 

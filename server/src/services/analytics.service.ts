@@ -1,9 +1,11 @@
+import mongoose from "mongoose";
 import User from "../models/User.model.js";
 import { Auction } from "../models/Auction.model.js";
 import { default as Deal, type DealStatus } from "../models/Deal.model.js";
 import KYC, { type KycStatus } from "../models/kyc.model.js";
 import Inventory from "../models/Inventory.model.js";
 import Bid from "../models/Bid.model.js";
+import { Advertisement } from "../models/Advertisement.model.js";
 
 export class DashboardService {
     async getUserStats(status?: "ACTIVE" | "DEACTIVE") {
@@ -149,6 +151,18 @@ export class DashboardService {
         return { acceptedBids: count };
     }
 
+    async getAdStats() {
+        const [pending, total] = await Promise.all([
+            Advertisement.countDocuments({ status: "PENDING" }),
+            Advertisement.countDocuments({}),
+        ]);
+
+        return {
+            pendingAds: pending,
+            totalAds: total
+        };
+    }
+
     async getDashboardStats(
         status?: "ACTIVE" | "DEACTIVE",
         auctionStatus?: "ACTIVE" | "CLOSED" | "CANCELLED",
@@ -163,6 +177,7 @@ export class DashboardService {
             kycStats,
             inventoryStats,
             bidStats,
+            adStats,
         ] = await Promise.all([
             this.getUserStats(status),
             this.getAuctionStats(auctionStatus),
@@ -170,6 +185,7 @@ export class DashboardService {
             this.getKycStats(kycStatus),
             this.getInventoryStats(inventoryStatus),
             this.getBidStats(bidStatus),
+            this.getAdStats(),
         ]);
 
         return {
@@ -179,6 +195,61 @@ export class DashboardService {
             ...kycStats,
             ...inventoryStats,
             ...bidStats,
+            ...adStats,
+        };
+    }
+
+    async getUserDashboardStats(userId: string) {
+        const uid = new mongoose.Types.ObjectId(userId);
+
+        const [
+            totalBids,
+            activeBids,
+            totalDeals,
+            activeDeals,
+            totalInventory,
+            kyc,
+            recentBids,
+            recentDeals
+        ] = await Promise.all([
+            Bid.countDocuments({ buyerId: uid }),
+            Bid.countDocuments({ buyerId: uid, status: "SUBMITTED" }),
+            Deal.countDocuments({ $or: [{ buyerId: uid }, { sellerId: uid }] }),
+            Deal.countDocuments({ 
+                $or: [{ buyerId: uid }, { sellerId: uid }],
+                status: { $nin: ["COMPLETED", "CANCELLED"] }
+            }),
+            Inventory.countDocuments({ sellerId: uid }),
+            KYC.findOne({ userId: uid }),
+            Bid.find({ buyerId: uid })
+                .sort({ createdAt: -1 })
+                .limit(5)
+                .populate({
+                    path: "auctionId",
+                    populate: { path: "inventoryId", select: "title shape carat price" }
+                }),
+            Deal.find({ $or: [{ buyerId: uid }, { sellerId: uid }] })
+                .sort({ createdAt: -1 })
+                .limit(5)
+                .populate("buyerId", "username")
+                .populate("sellerId", "username")
+                .populate({
+                    path: "auctionId",
+                    populate: { path: "inventoryId", select: "title shape carat" }
+                })
+        ]);
+
+        return {
+            stats: {
+                totalBids,
+                activeBids,
+                totalDeals,
+                activeDeals,
+                totalInventory,
+                kycStatus: kyc?.status || "not_started"
+            },
+            recentBids,
+            recentDeals
         };
     }
 }

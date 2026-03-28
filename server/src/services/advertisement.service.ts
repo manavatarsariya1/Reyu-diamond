@@ -29,6 +29,14 @@ export const createAdvertisement = async (
         mediaUrl = await uploadToCloudinary(file, "advertisements", mediaType as "image" | "video");
     }
 
+    // Optional: ownership check for inventoryId if provided
+    if (data.inventoryId) {
+        const inventory = await mongoose.model("Inventory").findById(data.inventoryId);
+        if (!inventory || inventory.sellerId.toString() !== advertiserId) {
+            throw new Error("You do not own this inventory item");
+        }
+    }
+
     const finalMediaUrl = mediaUrl || data.mediaUrl;
     if (!finalMediaUrl) {
         throw new Error("Media URL is required");
@@ -38,7 +46,7 @@ export const createAdvertisement = async (
         ...data,
         advertiserId,
         mediaUrl: finalMediaUrl,
-        mediaType: (mediaType || data.mediaType) as "IMAGE" | "VIDEO",
+        mediaType: (mediaType || data.mediaType) as "image" | "video",
         status: "PENDING"
     } as any);
 
@@ -71,7 +79,7 @@ export const getAdvertisements = async (
     }
 
     const advertisements = await Advertisement.find(filter)
-        .populate("advertiserId", "firstName lastName email")
+        .populate("advertiserId", "username email")
         .populate("inventoryId")
         .sort({ createdAt: -1 })
 
@@ -82,7 +90,7 @@ export const getAdvertisements = async (
 
 export const getAdvertisementById = async (id: string) => {
     const advertisement = await Advertisement.findById(id)
-        .populate("advertiserId", "name email")
+        .populate("advertiserId", "username email")
         .populate("inventoryId");
 
     if (!advertisement) {
@@ -111,6 +119,15 @@ export const updateAdvertisementStatus = async (
         updateData,
         { new: true }
     );
+
+    if (!advertisement) {
+        throw new Error("Advertisement not found");
+    }
+
+    return advertisement;
+};
+export const deleteAdvertisement = async (id: string) => {
+    const advertisement = await Advertisement.findByIdAndDelete(id);
 
     if (!advertisement) {
         throw new Error("Advertisement not found");

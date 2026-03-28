@@ -87,20 +87,20 @@ export const initiatePayment = async (req: Request, res: Response, next: NextFun
             throw err;
         }
 
-        const { clientSecret, paymentIntentId } = await stripeService.createPaymentIntent(deal);
+        const { clientSecret, paymentIntentId, status } = await stripeService.createPaymentIntent(deal);
 
         await logService.createSystemLog({
             eventType: "PAYMENT_INTENT_INITIATED",
             targetId: deal._id as any,
             severity: "INFO",
-            message: `Payment intent created for Deal ${deal._id}`,
-            meta: { paymentIntentId }
+            message: `Payment intent created for Deal ${deal._id}${status === 'succeeded' ? ' (Already Succeeded)' : ''}`,
+            meta: { paymentIntentId, status }
         });
 
         // Fire-and-forget: notify seller + admins 
         notifyPaymentInitiated(dealId).catch((e) => console.error("notifyPaymentInitiated:", e));
 
-        return sendResponse({ res, statusCode: 200, success: true, message: "Payment initiated", data: { clientSecret, paymentIntentId } });
+        return sendResponse({ res, statusCode: 200, success: true, message: "Payment initiated", data: { clientSecret, paymentIntentId, status } });
 
     } catch (error: any) {
         next(error);
@@ -109,38 +109,53 @@ export const initiatePayment = async (req: Request, res: Response, next: NextFun
 
 export const stripeWebhookHandler = async (req: Request, res: Response) => {
     const sig = req.headers["stripe-signature"] as string;
-
-    console.log("🔔 Stripe Webhook received. Signature:", sig ? "Present" : "Missing");
-    console.log("Raw body length:", req.body ? req.body.length : 0);
+    console.log("🔔 Stripe Webhook received.");
+    console.log("   - Signature:", sig ? `${sig.slice(0, 10)}...` : "Missing");
+    console.log("   - Body Type:", Buffer.isBuffer(req.body) ? "Buffer" : typeof req.body);
+    console.log("   - Body Length:", req.body ? req.body.length : 0);
+    console.log("   - Content-Type:", req.headers["content-type"]);
 
     let event;
 
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!endpointSecret) {
-        console.error("❌ STRIPE_WEBHOOK_SECRET is not defined");
+        console.error("❌ STRIPE_WEBHOOK_SECRET is not defined in .env");
         return res.sendStatus(500);
     }
 
+    console.log("   - Secret Snippet:", `${endpointSecret.slice(0, 10)}...`);
+
     try {
+        console.log("   - Body Snippet:", req.body instanceof Buffer ? req.body.toString().slice(0, 50) : String(req.body).slice(0, 50));
+        
         event = stripe.webhooks.constructEvent(
             req.body,
             sig,
             endpointSecret
         );
     } catch (err: any) {
-        console.log("❌ Webhook signature verification failed:", err.message);
+        console.log("❌ Webhook signature verification failed!");
+        console.log("   - Error Message:", err.message);
+        console.log("   - Error Code:", err.code);
+        
         await logService.createSystemLog({
             eventType: "WEBHOOK_ERROR",
             targetId: null as any,
             severity: "ERROR",
             message: `Webhook signature verification failed: ${err.message}`,
-            meta: { error: err.message, ip: req.ip }
+            meta: { 
+                error: err.message, 
+                code: err.code,
+                bodyType: typeof req.body,
+                isBuffer: Buffer.isBuffer(req.body),
+                secretSnippet: `${endpointSecret.slice(0, 10)}...`
+            }
         });
         return res.sendStatus(400);
     }
 
     console.log("📩 Stripe Event Verified:", event.type);
-    console.log("Event Data Object ID:", (event.data.object as any).id);
+
 
     try {
         /**

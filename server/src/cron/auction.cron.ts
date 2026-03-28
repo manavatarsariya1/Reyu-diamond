@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { Auction } from "../models/Auction.model.js";
 import Bid from "../models/Bid.model.js";
 import { createSystemDealService } from "../services/deal.service.js";
+import Inventory from "../models/Inventory.model.js";
 
 export const initAuctionCron = () => {
     cron.schedule("0 * * * * *", async () => {
@@ -53,6 +54,12 @@ export const initAuctionCron = () => {
                     console.log(`Closing auction ${auction._id} with no bids.`);
                     auction.status = "CLOSED";
                     await auction.save();
+
+                    // Update inventory status to AUCTION_ENDED and unlock
+                    await Inventory.findByIdAndUpdate(auction.inventoryId, {
+                        status: "AUCTION_ENDED",
+                        locked: false
+                    });
                 }
             }
         } catch (error) {

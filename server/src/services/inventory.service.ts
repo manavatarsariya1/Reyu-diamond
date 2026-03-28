@@ -94,7 +94,9 @@ export const getAllInventoriesService = async (filters: any = {}): Promise<IInve
         query.sellerId = filters.sellerId;
     }
 
-    const inventories = await Inventory.find(query).sort({ createdAt: -1 });
+    const inventories = await Inventory.find(query)
+        .populate("sellerId", "username rating badges")
+        .sort({ createdAt: -1 });
     return inventories;
 }
 
@@ -159,7 +161,7 @@ export const updateInventoryService = async (
 };
 
 export const findInventoryById = async (inventoryId: string): Promise<IInventory | null> => {
-    return Inventory.findById(inventoryId);
+    return Inventory.findById(inventoryId).populate("sellerId", "username rating badges");
 }
 
 export const deleteInventoryService = async (
