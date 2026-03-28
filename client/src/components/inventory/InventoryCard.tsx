@@ -9,6 +9,7 @@ const STATUS_THEME: Record<string, { label: string; class: string }> = {
   ON_MEMO: { label: "On Memo", class: "bg-amber-500 text-white" },
   LOCKED: { label: "Locked", class: "bg-slate-700 text-white" },
   SOLD: { label: "Sold", class: "bg-rose-500 text-white" },
+  AUCTION_ENDED: { label: "Auction Ended", class: "bg-amber-500 text-white" },
 };
 
 export const InventoryCard = ({
@@ -23,9 +24,9 @@ export const InventoryCard = ({
   hasActiveAuction?: boolean
 }) => {
 
-  // console.log(item)
   const status = STATUS_THEME[item.status] || STATUS_THEME.AVAILABLE;
-  const isLocked = item.status === "LOCKED" || item.status === "ON_MEMO";
+  const isInAuction = item.status === "LISTED" || !!activeAuction;
+  const isLocked = item.status === "LOCKED" || item.status === "ON_MEMO" || item.status === "SOLD" || item.locked || isInAuction;
 
   const formattedPrice = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -120,7 +121,7 @@ export const InventoryCard = ({
               </div>
             )}
 
-            {!activeAuction && !isLocked && item.status === "AVAILABLE" && onAuction && (
+            {!activeAuction && !isLocked && (item.status === "AVAILABLE" || item.status === "AUCTION_ENDED") && onAuction && (
               <button
                 onClick={() => onAuction(item)}
                 disabled={hasActiveAuction}

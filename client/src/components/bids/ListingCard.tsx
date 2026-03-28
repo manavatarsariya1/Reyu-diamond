@@ -1,30 +1,14 @@
-import React from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Lock, Gavel, QrCode, Search, Sun, Eye, Star, Package } from "lucide-react";
+import { ReputationBadge } from "../reputation/ReputationBadge";
+import type { DiamondListing } from "@/types/listing";
+import { ListingStatus } from "@/types/listing";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface Listing {
-  id: string;
-  sellerId: string;
-  barcode?: string;
-  carat: number;
-  shape: string;
-  color: string;
-  clarity: string;
-  cut?: string;
-  certification?: string;
-  price: number;
-  imageUrl?: string;
-  status: "ACTIVE" | "LOCKED" | "SOLD" | "PENDING";
-  timeLeft?: string;
-}
 
 interface ListingCardProps {
-  listing: Listing;
-  userId?: string;
-  isOwner?: boolean;   // ← added
-  onPlaceBid?: (listing: any) => void;
-  onCreateDeal?: (listing: any) => void;
+  listing: DiamondListing;
+  isOwner?: boolean;
+  onPlaceBid?: (listing: DiamondListing) => void;
 }
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (n: number) =>
@@ -88,9 +72,9 @@ function SpecCell({
 }
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
-export function ListingCard({ listing, userId, onPlaceBid, onCreateDeal, isOwner }: ListingCardProps) {
+export function ListingCard({ listing, onPlaceBid, isOwner }: ListingCardProps) {
   //   const isOwner  = listing.sellerId === userId;
-  const isLocked = listing.status === "LOCKED";
+  const isLocked = listing.status === ListingStatus.LOCKED;
   //   const isActive = listing.status === "ACTIVE";
 
   const navigate = useNavigate()
@@ -159,6 +143,21 @@ export function ListingCard({ listing, userId, onPlaceBid, onCreateDeal, isOwner
             Locked
           </div>
         )}
+
+        {/* Seller Info top-right (only if not locked and not owner) */}
+        {!isLocked && !isOwner && listing.sellerRating && (
+          <div className="absolute top-4 right-4 flex items-center gap-1.5">
+             <div className="bg-white/90 backdrop-blur-sm px-2.5 py-1.5 rounded-xl shadow-sm border border-white/50 flex items-center gap-1.5">
+                <Star size={10} className="fill-amber-400 text-amber-400" />
+                <span className="text-[10px] font-bold text-gray-900">{listing.sellerRating.average.toFixed(1)}</span>
+             </div>
+             {listing.sellerBadges && listing.sellerBadges.length > 0 && (
+                <div className="bg-white/90 backdrop-blur-sm px-1 rounded-full shadow-sm border border-white/50">
+                    <ReputationBadge tier={listing.sellerBadges[0] as any} size="sm" showLabel={false} />
+                </div>
+             )}
+          </div>
+        )}
       </div>
 
       {/* ── Body ─────────────────────────────────────────── */}
@@ -176,7 +175,7 @@ export function ListingCard({ listing, userId, onPlaceBid, onCreateDeal, isOwner
           </div>
           <div className="text-right shrink-0 ml-3">
             <span className="block text-[9px] font-semibold uppercase tracking-[.14em] text-[#c9a96e] mb-0.5">
-              Ask Price
+              {listing.totalBids > 0 ? "Current Bid" : "Starting Price"}
             </span>
             <span className="text-[20px] font-bold text-[#1a1612] leading-none">
               {fmt(listing.price)}
@@ -250,7 +249,7 @@ export function ListingCard({ listing, userId, onPlaceBid, onCreateDeal, isOwner
               </button> */}
 
               <button
-                onClick={() => navigate(`/marketplace/${listing.id}`)}
+                onClick={() => onPlaceBid ? onPlaceBid(listing) : navigate(`/marketplace/${listing.id}`)}
                 className="
                   flex-1 h-[50px] flex items-center justify-center gap-1.5
                   bg-[#1a1612] rounded-[14px] text-[#faf8f4] text-[12px] font-semibold
@@ -262,7 +261,7 @@ export function ListingCard({ listing, userId, onPlaceBid, onCreateDeal, isOwner
                 "
               >
                 <Gavel size={14} className="text-[#c9a96e]" />
-                Bid
+                Place Bid
               </button>
             </div>
           )}
@@ -272,7 +271,7 @@ export function ListingCard({ listing, userId, onPlaceBid, onCreateDeal, isOwner
         <div className="flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <QrCode size={11} className="text-[#c4baad]" />
           <span className="text-[9.5px] font-mono text-[#c4baad] uppercase tracking-[.1em]">
-            REF · {listing.barcode ?? listing.id.toUpperCase()}
+            REF · {listing.barcode ?? (typeof listing.id === "string" ? listing.id.toUpperCase() : "INV")}
           </span>
         </div>
 

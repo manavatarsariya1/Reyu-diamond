@@ -14,6 +14,9 @@ import {
     resendOtpFailed,
     resendOtpRequested,
     verifyOtpRequested,
+    getProfileRequested,
+    getProfileSucceeded,
+    getProfileFailed,
 } from "./auth.Slice";
 import { authService } from "../../api/authService";
 import { requestFCMToken } from "../../utils/firebase";
@@ -85,6 +88,19 @@ function* resendOtpWorker(action: PayloadAction<ResendOtpPayload>) {
     }
 }
 
+// 🔥 GET PROFILE WORKER
+function* getProfileWorker() {
+    try {
+        const user: User = yield call([authService, authService.getProfile]);
+        yield put(getProfileSucceeded(user));
+    } catch (error: any) {
+        yield put(getProfileFailed({
+            message: error.message || "Failed to fetch profile",
+            details: error.details
+        }));
+    }
+}
+
 
 // 👂 WATCHER SAGA
 export function* authSaga() {
@@ -93,4 +109,5 @@ export function* authSaga() {
     yield takeLatest(logout.type, logoutWorker);
     yield takeLatest(verifyOtpRequested.type, verifyOtpWorker);
     yield takeLatest(resendOtpRequested.type, resendOtpWorker);
+    yield takeLatest(getProfileRequested.type, getProfileWorker);
 }

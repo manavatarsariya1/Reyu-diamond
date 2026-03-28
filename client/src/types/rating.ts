@@ -1,9 +1,12 @@
-export enum BadgeTier {
-    BRONZE = 'Bronze',
-    SILVER = 'Silver',
-    GOLD = 'Gold',
-    PLATINUM = 'Platinum'
-}
+export const BadgeTier = {
+    DIAMOND: 'DIAMOND',
+    PLATINUM: 'PLATINUM',
+    GOLD: 'GOLD',
+    SILVER: 'SILVER',
+    BRONZE: 'BRONZE'
+} as const;
+
+export type BadgeTier = typeof BadgeTier[keyof typeof BadgeTier];
 
 export type Rating = {
     id: string;
@@ -33,4 +36,5 @@ export type Reputation = {
 
     // History
     recentRatings?: Rating[];
+    isKycVerified?: boolean;
 };

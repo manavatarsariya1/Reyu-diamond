@@ -2,7 +2,6 @@ import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import createSagaMiddleware from "redux-saga";
 import authReducer from "../features/auth/auth.Slice"
 import kycReducer from "../features/kyc/kycSlice";
-import preferenceReducer from "../features/preference/preferenceSlice";
 import inventoryReducer from "../features/inventory/inventorySlice";
 import auctionReducer from "../features/auction/auctionSlice";
 import bidReducer from "../features/bid/bidSlice";
@@ -10,6 +9,7 @@ import dealReducer from "../features/deal/dealSlice";
 import paymentReducer from "../features/payment/paymentSlice";
 import chatReducer from "../features/chat/chatSlice";
 import notificationReducer from "../features/notification/notificationSlice";
+import adminReducer from "../features/admin/adminSlice";
 
 
 import storage from "redux-persist/lib/storage";
@@ -40,7 +40,6 @@ const sagaMiddleware = createSagaMiddleware();
 const rootReducer = combineReducers({
    auth: authReducer,
    kyc: kycReducer,
-   preference: preferenceReducer,
    inventory: inventoryReducer,
    auction: auctionReducer,
    bid: bidReducer,
@@ -48,6 +47,7 @@ const rootReducer = combineReducers({
    payment: paymentReducer,
    chat: chatReducer,
    notification: notificationReducer,
+   admin: adminReducer,
    //   products: productReducer,
    //   wishlist: wishlistReducer,
    //   refresh: refreshReducer,
@@ -58,9 +58,9 @@ const rootReducer = combineReducers({
    3️⃣ Persist config (typed)
    =============================== */
 const persistConfig: PersistConfig<RootReducerType> = {
-   key: "root",
+   key: "root_v3",
    storage,
-   whitelist: ["auth", "kyc", "preference", "inventory", "auction", "bid", "deal", "payment", "chat", "notification"],
+   whitelist: ["auth", "kyc", "inventory", "auction", "bid", "deal", "payment", "chat", "notification", "admin"],
 };
 
 /* ===============================

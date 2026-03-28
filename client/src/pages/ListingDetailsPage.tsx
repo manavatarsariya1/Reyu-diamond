@@ -5,9 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import {
     Diamond, ArrowLeft, ShieldCheck, MapPin,
     Award, Info, Sparkles, Crown, Gavel, Clock,
-    TrendingUp, Loader2, MessageCircle
+    TrendingUp, Loader2, MessageCircle, Star
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
+import { ReputationBadge } from "@/components/reputation/ReputationBadge";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "@/app/store";
 import { BidModal } from "@/components/bids/BidModal";
@@ -82,7 +83,8 @@ export default function ListingDetailsPage() {
     }, [id, currentUserId]);
 
     // ── Derived flags ─────────────────────────────────────────────────────────
-    const isOwner = !!currentUserId && listing?.sellerId === currentUserId;
+    const seller = typeof listing?.sellerId === "object" ? listing.sellerId : null;
+    const isOwner = !!currentUserId && (seller?._id || listing?.sellerId) === currentUserId;
     const isAvailable = listing?.status === "LISTED" || listing?.status === "AVAILABLE";
     const isAuctionActive = auction?.status === "ACTIVE";
 
@@ -354,6 +356,37 @@ export default function ListingDetailsPage() {
                                             <p className="text-center text-sm text-gray-400 font-medium pt-3 flex items-center justify-center gap-2">
                                                 <ShieldCheck className="w-4 h-4 text-emerald-500" /> Secure Bidding Environment
                                             </p>
+
+                                            {/* Seller Reputation Mini Card */}
+                                            {seller && (
+                                                <div className="mt-8 pt-8 border-t border-gray-100">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest text-slate-400">Seller Identity</h4>
+                                                        {seller.badges && seller.badges.length > 0 && (
+                                                            <ReputationBadge tier={seller.badges[0]} size="sm" />
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm transition-all hover:bg-gray-50/50">
+                                                        <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-bold text-lg">
+                                                            {seller.username?.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <span className="font-bold text-gray-900 truncate">{seller.username}</span>
+                                                                <div className="flex items-center gap-1 text-amber-500 font-bold text-sm shrink-0">
+                                                                    <Star className="w-3.5 h-3.5 fill-current" />
+                                                                    {seller.rating?.average?.toFixed(1) || "New"}
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-[11px] text-gray-400 flex items-center gap-2 mt-1">
+                                                                <span className="truncate">{seller.rating?.count || 0} Deals completed</span>
+                                                                <span className="w-1 h-1 rounded-full bg-gray-200 shrink-0" />
+                                                                 <Link to={`/profile/${seller._id}`} className="text-indigo-500 font-semibold hover:underline cursor-pointer shrink-0">View Profile</Link>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </>
                                     )
                                         // (

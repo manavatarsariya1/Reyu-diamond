@@ -18,7 +18,7 @@ const Verify = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { resendOtp, otp } = useSelector((state: any) => state.auth);
+  const { resendOtp, otp, user } = useSelector((state: any) => state.auth);
   const [countdown, setCountdown] = useState(0);
   const [verificationcode, setVerificationcode] = useState("");
 
@@ -28,17 +28,24 @@ const Verify = () => {
 
   useEffect(() => {
     // If no email is found, redirect to register
-    if (!email) {
+    if (!email && !user) {
       navigate("/register");
     }
-  }, [email, navigate]);
+  }, [email, navigate, user]);
 
   // Handle resend OTP success
   useEffect(() => {
-    if (otp.status === "success") {
+    if (otp.status === "success" && user) {
       toast.success(otp.message || "OTP verified successfully");
       dispatch(clearOtpState());
-      navigate("/");
+      
+      if (user.role === "admin") {
+        navigate("/admin");
+      } else if (!user.isKycVerified) {
+        navigate("/kyc");
+      } else {
+        navigate("/dashboard");
+      }
     }
     
     if (otp.status === "error") {

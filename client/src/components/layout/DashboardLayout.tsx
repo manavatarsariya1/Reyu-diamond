@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { MobileHeader } from './MobileHeader';
@@ -7,10 +7,18 @@ import { LayoutContext } from '@/utils/Layoutcontext';
 import { StripeOnboardingBanner } from '../payment/StripeOnboardingBanner';
 import Navbar from './Navbar';
 
+import { useDispatch } from 'react-redux';
+import { getProfileRequested } from '@/features/auth/auth.Slice';
+
 const DashboardLayout = () => {
+    const dispatch = useDispatch();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
-        const location = useLocation();
+    const location = useLocation();
+
+    useEffect(() => {
+        dispatch(getProfileRequested());
+    }, [dispatch]);
 
 
       const showBanner = location.pathname === '/seller-dashboard';
@@ -53,7 +61,7 @@ const DashboardLayout = () => {
 
                     {/* Page content */}
                     <div className="h-full overflow-y-auto w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-                       
+                        {showBanner && <StripeOnboardingBanner />}
                         <Outlet />
                     </div>
                 </main>

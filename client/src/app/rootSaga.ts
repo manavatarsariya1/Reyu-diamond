@@ -1,6 +1,6 @@
 import { authSaga } from "@/features/auth/auth.Saga";
 import kycWatcherSaga from "@/features/kyc/kycSaga";
-import preferenceWatcherSaga from "@/features/preference/preferenceSaga";
+
 import inventoryWatcherSaga from "@/features/inventory/inventorySaga";
 import { auctionWatcherSaga } from "@/features/auction/auctionSaga";
 import bidWatcherSaga from "@/features/bid/bidSaga";
@@ -8,6 +8,7 @@ import { watchDealSagas } from "@/features/deal/dealSaga";
 import { paymentSaga } from "@/features/payment/paymentSaga";
 import { chatSaga } from "@/features/chat/chatSaga";
 import { notificationSaga } from "@/features/notification/notificationSaga";
+import { adminSaga } from "@/features/admin/adminSaga";
 import { all, fork } from "redux-saga/effects";
 
 export default function* rootSaga(): Generator {
@@ -15,7 +16,6 @@ export default function* rootSaga(): Generator {
     // wishlistSaga(),
     authSaga(),
     kycWatcherSaga(),
-    preferenceWatcherSaga(),
     inventoryWatcherSaga(),
     auctionWatcherSaga(),
     bidWatcherSaga(),
@@ -23,6 +23,7 @@ export default function* rootSaga(): Generator {
     fork(paymentSaga),
     chatSaga(),
     notificationSaga(),
+    adminSaga(),
     // productSaga(),
     // refreshSaga(),
     // syncSaga(),

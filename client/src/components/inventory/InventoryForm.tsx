@@ -101,6 +101,24 @@ export function InventoryForm({ isEdit, itemId }: InventoryFormProps) {
 
     // Find item if editing
     const currentItem = isEdit ? items.find(i => i._id === itemId) : null;
+    const isLockedInAuction = currentItem && (currentItem.status === "LISTED" || currentItem.locked);
+
+    if (isEdit && isLockedInAuction) {
+        return (
+            <div className="p-10 text-center space-y-4">
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
+                    <Gem className="w-8 h-8 text-amber-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Item Locked</h3>
+                <p className="text-gray-500 max-w-sm mx-auto">
+                    This item is currently in an active auction or has been sold. Editing is restricted to maintain transaction integrity.
+                </p>
+                <Button variant="outline" onClick={() => navigate("/inventory")}>
+                    Back to Inventory
+                </Button>
+            </div>
+        );
+    }
 
     const [scannerOpen, setScannerOpen] = useState(false);
     const [imageFiles, setImageFiles] = useState<File[]>([]);

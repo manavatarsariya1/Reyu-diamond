@@ -16,7 +16,20 @@ const LoginPage = () => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { error } = useSelector((state: RootState) => state.auth.login);
+  const { error, status } = useSelector((state: RootState) => state.auth.login);
+  const user = useSelector((state: RootState) => state.auth.user);
+
+  useEffect(() => {
+    if (status === "success" && user) {
+      if (user.role === "admin") {
+        navigate("/admin");
+      } else if (!user.isKycVerified) {
+        navigate("/kyc");
+      } else {
+        navigate("/dashboard");
+      }
+    }
+  }, [status, user, navigate]);
 
   useEffect(() => {
     if (error) {

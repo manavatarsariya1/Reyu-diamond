@@ -21,7 +21,7 @@ export default function InventoryPage() {
     const { items: inventoryItems, loading } = useSelector((state: RootState) => state.inventory);
     const auctions = useSelector((state: RootState) => state.auction.items);
     const user = useSelector((state: RootState) => state.auth.user);
-    const currentUserId = user?._id || user?.id;
+    const currentUserId = (user as any)?._id || user?.id;
     const currentUserRole = user?.role;
     const { isCollapsed } = useLayout();
 
@@ -33,10 +33,6 @@ export default function InventoryPage() {
     const [auctionModalOpen, setAuctionModalOpen] = useState(false);
     const [selectedAuctionItem, setSelectedAuctionItem] = useState<InventoryItem | null>(null);
 
-    console.log("currentUserId:", currentUserId);
-    console.log("sellerId:", inventoryItems[0]?.sellerId);
-    console.log("match:", currentUserId === inventoryItems[0]?.sellerId);
-
     useEffect(() => {
         dispatch(fetchInventoriesStart());
         dispatch(fetchAuctionsStart());
@@ -45,7 +41,12 @@ export default function InventoryPage() {
     // ── Global Auction constraints ───────────────────────
     const userActiveAuction = useMemo(() => {
         if (!currentUserId) return null;
-        return auctions.find(a => a.recipient === currentUserId && a.status === "ACTIVE");
+        return auctions.find(a => {
+            const recipientId = typeof a.recipient === 'string' ? a.recipient : (a.recipient as any)?._id;
+            return recipientId === currentUserId &&
+                   a.status === "ACTIVE" && 
+                   new Date(a.endDate) > new Date();
+        });
     }, [auctions, currentUserId]);
 
     // ── Step 1: seller filter (derived, no state) ────────────────────────────
@@ -53,7 +54,10 @@ export default function InventoryPage() {
         () => {
             if (currentUserRole === "admin") return inventoryItems;
             return currentUserId
-                ? inventoryItems.filter(i => i.sellerId === currentUserId)
+                ? inventoryItems.filter(i => {
+                    const sellerId = typeof i.sellerId === 'string' ? i.sellerId : (i.sellerId as any)?._id;
+                    return sellerId === currentUserId;
+                })
                 : [];
         },
         [inventoryItems, currentUserId, currentUserRole]
@@ -70,8 +74,6 @@ export default function InventoryPage() {
             i.title?.toLowerCase().includes(lower)
         );
     }, [myItems, searchQuery]);
-
-    // console.log(filteredItems,"mmm")
 
 
     const handleSearch = (query: string) => setSearchQuery(query);
@@ -98,7 +100,7 @@ export default function InventoryPage() {
 
             <InventoryStats
                 total={myItems.length}
-                available={myItems.filter(i => i.status === InventoryStatus.AVAILABLE).length}
+                available={myItems.filter(i => i.status === InventoryStatus.AVAILABLE || i.status === InventoryStatus.AUCTION_ENDED).length}
                 listed={myItems.filter(i => i.status === InventoryStatus.LISTED).length}
                 locked={myItems.filter(i => i.locked).length}
             />
@@ -116,12 +118,11 @@ export default function InventoryPage() {
                         : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"
                 }>
                     {filteredItems.map(item => (
-                        console.log(item),
                         <InventoryCard
                             key={item._id}
                             item={item}
                             onAuction={handleOpenAuction}
-                            activeAuction={auctions.find(a => a.inventoryId === item._id && a.status === "ACTIVE")}
+                            activeAuction={auctions.find(a => a.inventoryId === item._id && a.status === "ACTIVE" && new Date(a.endDate) > new Date())}
                             hasActiveAuction={!!userActiveAuction}
                         />
                     ))}

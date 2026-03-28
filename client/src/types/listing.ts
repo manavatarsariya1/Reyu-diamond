@@ -1,15 +1,19 @@
-import { DiamondShape, DiamondColor, DiamondClarity, DiamondCertification } from "./preference";
+import type { DiamondShape, DiamondColor, DiamondClarity, DiamondCertification } from "./diamond";
 
-export enum ListingStatus {
-    ACTIVE = 'Active',
-    LOCKED = 'Locked', // When a bid is accepted
-    SOLD = 'Sold',
-}
+export const ListingStatus = {
+    ACTIVE: 'Active',
+    LOCKED: 'Locked', // When a bid is accepted
+    SOLD: 'Sold',
+} as const;
+
+export type ListingStatus = typeof ListingStatus[keyof typeof ListingStatus];
 
 export interface DiamondListing {
     id: string;
-    sellerId: string;
-    sellerName: string; // Simplification for UI
+    sellerId: any;
+    sellerName: string; 
+    sellerRating?: { average: number; count: number };
+    sellerBadges?: string[];
 
     // Diamond Specs
     shape: DiamondShape;
@@ -31,8 +35,11 @@ export interface DiamondListing {
     status: ListingStatus;
     createdAt: string;
     expiresAt?: string;
+    timeLeft?: string; // For display
 
     // Bid Info
     currentHighestBid?: number;
     totalBids: number;
+    cut?: string;
+    barcode?: string;
 }

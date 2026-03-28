@@ -5,10 +5,27 @@ const api: AxiosInstance = axios.create({
 //   withCredentials: true
 });
 
-// optional interceptor
-// api.interceptors.response.use(
-//   (res) => res,
-//   (err) => Promise.reject(err.response?.data || err)
-// );
+// Add a request interceptor
+api.interceptors.request.use(
+  (config) => {
+    let token = localStorage.getItem("token");
+    
+    if (token) {
+      // Handle potential double quotes from JSON.stringify
+      try {
+        const parsed = JSON.parse(token);
+        token = typeof parsed === 'string' ? parsed : token;
+      } catch (e) {
+        // Not JSON, use as is
+      }
+      
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export default api;

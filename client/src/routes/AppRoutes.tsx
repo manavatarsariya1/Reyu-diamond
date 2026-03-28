@@ -1,4 +1,3 @@
-import React from 'react'
 import DashboardPage from '@/pages/DashboardPage';
 import KycPage from '@/pages/KycPage';
 import LandingPage from '@/pages/LandingPage';
@@ -8,15 +7,10 @@ import RegisterPage from '@/pages/RegisterPage';
 import Verify from '@/pages/Verify';
 import ProfilePage from '@/pages/ProfilePage';
 import WalletPage from '@/pages/WalletPage';
-import SettingsPage from '@/pages/SettingsPage';
-// import PublicRoute from '@/routes/PublicRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { createBrowserRouter } from 'react-router-dom';
-import PreferencesPage from '@/pages/PreferencesPage';
-import CreatePreferencePage from '@/pages/CreatePreferencePage';
-import EditPreferencePage from '@/pages/EditPreferencePage';
 import PublicRoute from './PublicRoute';
-// import InventoryPage from '@/pages/InventoryPage';
+import ProtectedRoute from './ProtectedRoute';
 import MarketplacePage from '@/pages/MarketplacePage';
 import MyBidsPage from '@/pages/MyBidsPage';
 import SellerDashboardPage from '@/pages/SellerDashboardPage';
@@ -26,25 +20,25 @@ import DealDetailsPage from '@/pages/DealDetailsPage';
 import ChatPage from '@/pages/ChatPage';
 import InventoryPage from '@/pages/InventoryPage';
 import AddInventoryPage from '@/pages/AddInventoryPage';
-// import ReputationPage from '@/pages/ReputationPage';
 import RateDealPage from '@/pages/RateDealPage';
 import ReputationPage from '@/pages/ReputationPage';
 import PaymentPage from '@/pages/PaymentPage';
-import EscrowDashboardPage from '@/pages/EscrowDashboardPage';
 import InventoryDetails from '@/components/inventory/InventoryDetails';
 import { StripeOnboardingBanner } from '@/components/payment/StripeOnboardingBanner';
-
-
+import AdminLayout from '@/components/admin/AdminLayout';
+import DashboardOverview from '@/components/admin/DashboardOverview';
+import KycManagement from '@/components/admin/KycManagement';
+import UserManagement from '@/components/admin/UserManagement';
+import AdManagement from '@/components/admin/AdManagement';
+import SystemLogs from '@/components/admin/SystemLogs';
+import AdManagementPage from '@/pages/AdManagementPage';
+import PublicProfilePage from '@/pages/PublicProfilePage';
 
 const AppRoutes = createBrowserRouter([
     {
         path: "/",
         element: <LandingPage />,
     },
-    // {
-    //     path: "/inventory",
-    //     element: <InventoryPage />,
-    // },
     {
         path: "/login",
         element:
@@ -62,10 +56,7 @@ const AppRoutes = createBrowserRouter([
     },
     {
         path: "/verify-otp",
-        element:
-            // <PublicRoute>
-            <Verify />
-        // </PublicRoute>
+        element: <Verify />,
     },
     {
         path: "/marketplace",
@@ -80,12 +71,12 @@ const AppRoutes = createBrowserRouter([
         element: <ReputationPage />
     },
     {
-        path: "/ratedeal/:dealId",
-        element: <RateDealPage />
+        path: "/profile/:userId",
+        element: <PublicProfilePage />
     },
     {
-        path: "/escrow/:dealId",
-        element: <EscrowDashboardPage />
+        path: "/ratedeal/:dealId",
+        element: <RateDealPage />
     },
     {
         path: "/payment/:dealId",
@@ -93,86 +84,95 @@ const AppRoutes = createBrowserRouter([
     },
     {
         path: "/x",
-        element:   <StripeOnboardingBanner />
+        element: <StripeOnboardingBanner />
     },
     {
-        element: <DashboardLayout />,
+        element: <ProtectedRoute allowedRoles={['user', 'admin']} />,
         children: [
             {
-                path: "/dashboard",
-                element: <DashboardPage />
-            },
+                element: <DashboardLayout />,
+                children: [
+                    {
+                        path: "/dashboard",
+                        element: <DashboardPage />
+                    },
+                    {
+                        path: "/kyc",
+                        element: <KycPage />
+                    },
+                    {
+                        path: "/profile",
+                        element: <ProfilePage />
+                    },
+                    {
+                        path: "/wallet",
+                        element: <WalletPage />
+                    },
+                    {
+                        path: "/my-bids",
+                        element: <MyBidsPage />
+                    },
+                    {
+                        path: "/seller-dashboard",
+                        element: <SellerDashboardPage />
+                    },
+                    {
+                        path: "/deals",
+                        element: <DealDashboardPage />
+                    },
+                    {
+                        path: "/deals/:id",
+                        element:  
+                        <>
+                        <StripeOnboardingBanner />
+                        <DealDetailsPage />
+                        </>
+                    },
+                    {
+                        path: "/messages",
+                        element: <ChatPage />
+                    },
+                    {
+                        path: "/messages/:id",
+                        element: <ChatPage />
+                    },
+                    {
+                        path: "/inventory",
+                        element: <InventoryPage />
+                    },
+                    {
+                        path: "/inventory/add",
+                        element: <AddInventoryPage />
+                    },
+                    {
+                        path: "/inventory/edit/:id",
+                        element: <AddInventoryPage />
+                    },
+                    {
+                        path: "/ads",
+                        element: <AdManagementPage />
+                    },
+                    {
+                        path: "/inventory/:id",
+                        element: <InventoryDetails />
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        path: "/admin",
+        element: <ProtectedRoute allowedRoles={['admin']} />,
+        children: [
             {
-                path: "/kyc",
-                element: <KycPage />
-            },
-            {
-                path: "/preferences",
-                element: <PreferencesPage />
-            },
-            {
-                path: "/preferences/create",
-                element: <CreatePreferencePage />
-            },
-            {
-                path: "/preferences/edit/:id",
-                element: <EditPreferencePage />
-            },
-            {
-                path: "/profile",
-                element: <ProfilePage />
-            },
-            {
-                path: "/wallet",
-                element: <WalletPage />
-            },
-            {
-                path: "/settings",
-                element: <SettingsPage />
-            },
-            {
-                path: "/my-bids",
-                element: <MyBidsPage />
-            },
-            {
-                path: "/seller-dashboard",
-                element: <SellerDashboardPage />
-            },
-            {
-                path: "/deals",
-                element: <DealDashboardPage />
-            },
-            {
-                path: "/deals/:id",
-                element:  
-                <>
-                <StripeOnboardingBanner />
-                <DealDetailsPage />
-                </>
-            },
-            {
-                path: "/messages",
-                element: <ChatPage />
-            },
-            {
-                path: "/messages/:id",
-                element: <ChatPage />
-            },
-            {
-                path: "/inventory",
-                element: <InventoryPage />
-            },
-            {
-                path: "/inventory/add",
-                element: <AddInventoryPage />
-            },
-            {
-                path: "/inventory/edit/:id",
-                element: <AddInventoryPage /> // We will modify AddInventoryPage and InventoryForm to handle edit mode
-            },
-            {
-                path: "/inventory/:id",
-                element: <InventoryDetails />
+                element: <AdminLayout />,
+                children: [
+                    { path: "", element: <DashboardOverview /> },
+                    { path: "kyc", element: <KycManagement /> },
+                    { path: "users", element: <UserManagement /> },
+                    { path: "ads", element: <AdManagement /> },
+                    { path: "logs", element: <SystemLogs /> },
+                ]
             }
         ]
     },
@@ -182,5 +182,4 @@ const AppRoutes = createBrowserRouter([
     },
 ]);
 
-
-export default AppRoutes
+export default AppRoutes;

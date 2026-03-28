@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useDispatch, useSelector } from "react-redux";
 import { createAuctionStart } from "../../features/auction/auctionSlice";
-// import { RootState } from "../../app/store";
+import type { RootState } from "@/app/store";
 import {
     Dialog,
     DialogContent,

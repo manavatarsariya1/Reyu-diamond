@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchInventoriesStart } from "@/features/inventory/inventorySlice";
 import { fetchAuctionsStart } from "@/features/auction/auctionSlice";
 import type { RootState } from "@/app/store";
-import { InventoryStatus } from "@/types/inventory";
 import { ListingStatus } from "@/types/listing";
 import type { DiamondListing } from "@/types/listing";
 import { ListingCard } from "@/components/bids/ListingCard";
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Search, Filter, SlidersHorizontal, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Navbar from "@/components/layout/Navbar";
+import AdCarousel from "@/components/ads/AdCarousel";
 
 export default function MarketplacePage() {
     const dispatch = useDispatch();
@@ -36,34 +36,56 @@ export default function MarketplacePage() {
     // Mock User ID
     const currentUserId = user?._id;
 
-    // Map inventory items to diamond listing type, merging active auction data.
-    const listings: DiamondListing[] = inventoryItems
-        .filter(item => item.status === InventoryStatus.LISTED)
-        .map(inv => {
-            const auction = auctions.find(a => a.inventoryId === inv._id && a.status === "ACTIVE");
+    // Helper for countdown
+    const calculateTimeLeft = (endDate: string | Date) => {
+        const end = new Date(endDate).getTime();
+        const now = new Date().getTime();
+        const diff = end - now;
+
+        if (diff <= 0) return "Ended";
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        return `${days}d · ${hours}h · ${minutes}m`;
+    };
+
+    // Map active auctions to diamond listing type.
+    const listings: DiamondListing[] = (auctions || [])
+        .filter(auction => auction.status === "ACTIVE" && new Date(auction.endDate) > new Date())
+        .map(auction => {
+            const invId = typeof auction.inventoryId === "object" ? (auction.inventoryId as any)._id : auction.inventoryId;
+            const inv = inventoryItems.find((i: any) => i._id === invId);
+            
+            if (!inv) return null;
 
             return {
                 id: inv._id,
-                sellerId: inv.sellerId,
-                sellerName: "Verified Seller", // This would typically come populated from backend
+                sellerId: typeof inv.sellerId === "object" ? inv.sellerId._id : inv.sellerId,
+                sellerName: (typeof inv.sellerId === "object" && inv.sellerId.username) || "Verified Seller",
+                sellerRating: typeof inv.sellerId === "object" ? inv.sellerId.rating : undefined,
+                sellerBadges: typeof inv.sellerId === "object" ? inv.sellerId.badges : undefined,
                 shape: inv.shape as any,
                 carat: inv.carat,
                 color: inv.color as any,
                 clarity: inv.clarity as any,
                 certification: inv.lab as any,
-                reportNumber: inv.barcode,
-                price: auction ? (auction.highestBidPrice > 0 ? auction.highestBidPrice : auction.basePrice) : inv.price,
-                minBidAmount: auction ? auction.basePrice : inv.price * 0.9,
+                reportNumber: inv.barcode || "N/A",
+                price: auction.highestBidPrice > 0 ? auction.highestBidPrice : auction.basePrice,
+                minBidAmount: auction.basePrice,
                 imageUrl: inv.images?.[0] || "",
-                location: inv.location,
+                location: inv.location || "Global",
                 status: ListingStatus.ACTIVE,
-                createdAt: auction ? auction.startDate : inv.createdAt,
-                totalBids: auction ? auction.bidIds?.length || 0 : 0,
-                currentHighestBid: (auction && auction.highestBidPrice > 0) ? auction.highestBidPrice : undefined
-            };
-        });
+                createdAt: auction.startDate,
+                timeLeft: calculateTimeLeft(auction.endDate),
+                totalBids: auction.bidIds?.length || 0,
+                currentHighestBid: auction.highestBidPrice > 0 ? auction.highestBidPrice : undefined
+            } as DiamondListing;
+        })
+        .filter(l => l !== null) as DiamondListing[];
 
-        console.log(inventoryItems)
+
     // Filter Logic
     const filteredListings = listings.filter(listing =>
         listing.shape.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -81,7 +103,7 @@ export default function MarketplacePage() {
         setIsBidModalOpen(true);
     };
 
-    const handleSubmitBid = async (amount: number) => {
+    const handleSubmitBid = (amount: number) => {
         return new Promise<void>((resolve, reject) => {
             if (!selectedListing) {
                 reject(new Error("No listing selected"));
@@ -108,30 +130,12 @@ export default function MarketplacePage() {
         });
     };
 
-    const handleCreateDeal = (listing: DiamondListing) => {
-        if (listing.sellerId === currentUserId) {
-            toast.error("You cannot buy your own listing.");
-            return;
-        }
-
-        const auction = auctions.find(a => a.inventoryId === listing.id && a.status === "ACTIVE");
-        if (!auction) {
-            toast.error("Active auction not found for this listing.");
-            return;
-        }
-
-        if (window.confirm(`Are you sure you want to buy this diamond right now for ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(listing.price)}?`)) {
-            dispatch({
-                type: "deal/createDirectDealRequest",
-                payload: auction._id
-            });
-        }
-    };
-
     return (
         <div className="gradient-luxury ">
             <Navbar />
-            <div className="space-y-8 container mx-auto py-6 ">
+            <div className="space-y-12 container mx-auto py-8">
+                <AdCarousel section="MARKETPLACE" />
+                
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
@@ -175,7 +179,6 @@ export default function MarketplacePage() {
                                 listing={listing as any}
                                 isOwner={listing.sellerId === currentUserId}
                                 onPlaceBid={handlePlaceBid}
-                                onCreateDeal={handleCreateDeal}
                             />
                         ))}
                     </div>

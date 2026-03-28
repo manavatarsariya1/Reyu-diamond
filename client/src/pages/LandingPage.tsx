@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Navbar from "@/components/layout/Navbar";
-// import Navbar from "@/components/layout/Navbar";
+import AdCarousel from "@/components/ads/AdCarousel";
 
 
 const LandingPage = () => {
@@ -15,25 +15,6 @@ const LandingPage = () => {
     <div className="min-h-screen gradient-luxury">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-md border-b border-border/50">
-        {/* <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <Diamond className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold text-gradient">Reyu Diamond</span>
-          </Link>
-          {!user &&<div className="flex items-center gap-4">
-            <Link to="/login">
-              <Button variant="ghost" size="sm">
-                Login
-              </Button>
-            </Link>
-            <Link to="/register">
-              <Button variant="hero" size="sm">
-                Create Account
-              </Button>
-            </Link>
-          </div>}
-          {user && <Button onClick={()=>navigate("/dashboard")} size="sm">DashBoard</Button>}
-        </div> */}
         <Navbar/>
       </nav>
 
@@ -82,6 +63,13 @@ const LandingPage = () => {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Advertisement Section */}
+      <section className="pb-20 px-6">
+        <div className="container mx-auto max-w-6xl">
+           <AdCarousel section="HOME_DASHBOARD" />
         </div>
       </section>
 

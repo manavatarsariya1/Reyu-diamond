@@ -8,6 +8,7 @@ export interface PaymentState {
     error: string | null;
     success: boolean;
     onboardingUrl: string | null;
+    status: string | null;
 }
 
 const initialState: PaymentState = {
@@ -17,6 +18,7 @@ const initialState: PaymentState = {
     error: null,
     success: false,
     onboardingUrl: null,
+    status: null,
 };
 
 const paymentSlice = createSlice({
@@ -30,10 +32,11 @@ const paymentSlice = createSlice({
             state.clientSecret = null;
             state.paymentIntentId = null;
         },
-        initiatePaymentSuccess: (state, action: PayloadAction<{ clientSecret: string; paymentIntentId: string }>) => {
+        initiatePaymentSuccess: (state, action: PayloadAction<{ clientSecret: string; paymentIntentId: string; status?: string }>) => {
             state.isProcessing = false;
             state.clientSecret = action.payload.clientSecret;
             state.paymentIntentId = action.payload.paymentIntentId;
+            state.status = action.payload.status || null;
         },
         initiatePaymentFailure: (state, action: PayloadAction<string>) => {
             state.isProcessing = false;
@@ -93,6 +96,7 @@ const paymentSlice = createSlice({
             state.clientSecret = null;
             state.paymentIntentId = null;
             state.onboardingUrl = null;
+            state.status = null;
         }
     }
 });

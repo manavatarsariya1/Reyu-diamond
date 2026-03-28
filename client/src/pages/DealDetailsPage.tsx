@@ -10,11 +10,14 @@ import { LogisticsPanel } from "@/components/deals/LogisticsPanel";
 import { PDFAccessPanel } from "@/components/deals/PDFAccessPanel";
 import { DealStatusBadge } from "@/components/deals/DealStatusBadge";
 import {
-    ArrowLeft, Diamond, Loader2, Clock, AlertTriangle,
+    Gavel, Hash, CreditCard, CircleDollarSign, Package,
+    Star, ArrowLeft, Diamond, Loader2, Clock, AlertTriangle,
     ExternalLink, ShieldCheck, FileText, CheckCircle2,
-    Banknote, User, Mail, Calendar, TrendingUp,
-    Gavel, Hash, CreditCard, CircleDollarSign, Package
+    Banknote, User, Mail, Calendar, TrendingUp
 } from "lucide-react";
+import { RatingSubmissionCard } from "@/components/reputation/RatingSubmissionCard";
+import { ratingService } from "@/api/ratingService";
+import { toast } from "sonner";
 
 export default function DealDetailsPage() {
     const { id } = useParams();
@@ -24,9 +27,20 @@ export default function DealDetailsPage() {
 
     const [timeLeft, setTimeLeft] = useState<string | null>(null);
     const [isExpired, setIsExpired] = useState(false);
+    const [isRatingSubmitted, setIsRatingSubmitted] = useState(false);
+    const [isSubmittingRating, setIsSubmittingRating] = useState(false);
 
     useEffect(() => {
-        if (id) dispatch(fetchDealByIdRequest(id));
+        if (id) {
+            dispatch(fetchDealByIdRequest(id));
+            
+            // Check if already rated
+            ratingService.checkRating(id).then(res => {
+                if (res.success && res.rated) {
+                    setIsRatingSubmitted(true);
+                }
+            }).catch(err => console.error("Error checking rating status:", err));
+        }
     }, [dispatch, id]);
 
     useEffect(() => {
@@ -96,6 +110,23 @@ export default function DealDetailsPage() {
 
     const fmtDateTime = (d: string) =>
         d ? new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
+    // Status color helpers
+    const handleRatingSubmit = async (score: number, feedback: string) => {
+        try {
+            setIsSubmittingRating(true);
+            const response = await ratingService.createRating(deal._id as string, score, feedback);
+            if (response.success) {
+                setIsRatingSubmitted(true);
+                toast.success("Thank you for your feedback!");
+            }
+        } catch (error: any) {
+            console.error("Failed to submit rating:", error);
+            toast.error(error.response?.data?.message || "Failed to submit rating");
+        } finally {
+            setIsSubmittingRating(false);
+        }
+    };
 
     // Status color helpers
     const statusColors: Record<string, string> = {
@@ -232,6 +263,18 @@ export default function DealDetailsPage() {
                         Transaction Progress
                     </h3>
                     <LifecycleTracker currentStatus={deal.status} />
+
+                    {(deal.status === "COMPLETED" || deal.status === "CANCELLED") && (
+                        <div className="mt-12 pt-12 border-t border-slate-100">
+                             <div className="max-w-md mx-auto">
+                                <RatingSubmissionCard 
+                                    deal={deal} 
+                                    isSubmitted={isRatingSubmitted}
+                                    onSubmit={handleRatingSubmit}
+                                />
+                             </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* ─── Main 3-Column Grid ─── */}

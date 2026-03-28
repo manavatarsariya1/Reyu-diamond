@@ -16,8 +16,7 @@ export function StripeOnboardingBanner() {
     // Assuming backend returns stripeAccountId, check if it's missing or if `user?.role === 'seller'` is needing it.
 
     // Better: let's assume we can show it explicitly if missing.
-    // const needsOnboarding = user?.role === "seller" && !user?.stripeAccountId;
-    const needsOnboarding = true;
+    const needsOnboarding = !user?.stripeAccountId;
 
     useEffect(() => {
         if (onboardingUrl) {

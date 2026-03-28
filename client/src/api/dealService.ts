@@ -17,7 +17,7 @@ export const dealService = {
      * Create a new deal from an accepted bid
      */
     createDeal: async (bidId: string): Promise<Deal> => {
-        const response = await axiosInstance.post<{ success: boolean; data: Deal }>(`/deal/${bidId}`, {
+        const response = await axiosInstance.post<{ success: boolean; data: Deal }>(`/deal/${bidId}`, {}, {
             headers: authHeaders()
         });
         return response.data.data;

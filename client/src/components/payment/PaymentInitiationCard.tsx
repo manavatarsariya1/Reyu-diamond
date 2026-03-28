@@ -17,7 +17,12 @@ export function PaymentInitiationCard({ deal, onPaymentInitiated }: PaymentIniti
     const stripe = useStripe();
     const elements = useElements();
     const dispatch = useDispatch<AppDispatch>();
-    const { clientSecret, isProcessing: initProcessing, error } = useSelector((state: RootState) => state.payment);
+    const { 
+        clientSecret, 
+        isProcessing: initProcessing, 
+        error,
+        status 
+    } = useSelector((state: RootState) => state.payment);
 
     const [timeLeft, setTimeLeft] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,7 +136,21 @@ export function PaymentInitiationCard({ deal, onPaymentInitiated }: PaymentIniti
 
                 {error && <p className="text-rose-500 font-bold mb-4 text-center">{error}</p>}
 
-                {!clientSecret ? (
+                {status === "succeeded" ? (
+                    <div className="text-center p-8 bg-emerald-50 rounded-2xl border border-emerald-100 mb-6">
+                        <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <ShieldCheck className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-lg font-bold text-emerald-900 mb-2">Payment Already Processed</h3>
+                        <p className="text-sm text-emerald-800/70 mb-6">This transaction has already been successfully funded and is secured in escrow.</p>
+                        <Button 
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white w-full h-12 rounded-xl font-bold"
+                            onClick={onPaymentInitiated}
+                        >
+                            Return to Deal Details
+                        </Button>
+                    </div>
+                ) : !clientSecret ? (
                     <Button
                         size="lg"
                         className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white font-medium text-lg shadow-xl shadow-slate-200 transition-all hover:translate-y-[-1px]"

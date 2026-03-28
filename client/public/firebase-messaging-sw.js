@@ -14,11 +14,24 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
     console.log('[firebase-messaging-sw.js] Received background message ', payload);
-    const notificationTitle = payload.notification.title;
-    const notificationOptions = {
-        body: payload.notification.body,
-        icon: '/vite.svg',
-    };
+    
+    // Check if any client windows are open and focused
+    return self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then((clientList) => {
+            const isAppInForeground = clientList.some(client => client.focused);
+            
+            if (isAppInForeground) {
+                console.log('[firebase-messaging-sw.js] App is in foreground, skipping native notification.');
+                return;
+            }
 
-    self.registration.showNotification(notificationTitle, notificationOptions);
+            const notificationTitle = payload.notification.title;
+            const notificationOptions = {
+                body: payload.notification.body,
+                icon: '/vite.svg',
+                data: payload.data, // Keep the data for clicks
+            };
+
+            return self.registration.showNotification(notificationTitle, notificationOptions);
+        });
 });

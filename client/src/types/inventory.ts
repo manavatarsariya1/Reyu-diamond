@@ -4,14 +4,15 @@ export const InventoryStatus = {
     LISTED: 'LISTED',
     SOLD: 'SOLD',
     ON_MEMO: 'ON_MEMO',
-    LOCKED: 'LOCKED'
+    LOCKED: 'LOCKED',
+    AUCTION_ENDED: 'AUCTION_ENDED'
 } as const;
 
 export type InventoryStatus = typeof InventoryStatus[keyof typeof InventoryStatus];
 
 export type InventoryItem = {
     _id: string; // Map to MongoDB ObjectId
-    sellerId: string;
+    sellerId: any; // Can be string ID or populated object with username, rating, badges
     title: string;
     description?: string;
     barcode: string;

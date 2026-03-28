@@ -47,17 +47,11 @@ const NotificationBell: React.FC = () => {
             // FCM Foreground listener
             onMessageListener()
                 .then((payload: any) => {
-                    console.log("FCM Payload:", payload);
-                    // Socket already handles the real-time update for data, 
-                    // but we can show another toast or refresh if needed.
-                    if (payload.notification) {
-                        toast(payload.notification.title, {
-                            description: payload.notification.body,
-                            icon: <Bell className="w-4 h-4" />,
-                        });
-                    }
+                    console.log("FCM Foreground Message:", payload);
+                    // We don't show a toast here because the Socket listener (above) 
+                    // already handles the real-time notification and toast.
                 })
-                .catch((err) => console.log("failed: ", err));
+                .catch((err) => console.log("FCM Foreground Listener failed: ", err));
 
             return () => {
                 socketService.offNewNotification();

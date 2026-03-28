@@ -2,6 +2,7 @@ import api from "./axios";
 
 // auth.service.ts
 export interface User {
+  _id?: string;
   id: string;
   username: string;
   email: string;
@@ -171,6 +172,22 @@ export class AuthService {
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || "Failed to resend OTP";
       throw new Error(errorMessage);
+    }
+  }
+
+  // GET PROFILE
+  async getProfile(): Promise<User> {
+    try {
+      const response = await api.get<ApiResponse>("/auth/profile");
+      if (!response.data.success) {
+        throw new Error(response.data.message || "Failed to fetch profile");
+      }
+      return response.data.data;
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || "Failed to fetch profile",
+        details: error.response?.data?.errors || error.message,
+      };
     }
   }
 

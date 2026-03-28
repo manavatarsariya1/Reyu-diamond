@@ -33,21 +33,26 @@ const Navbar: React.FC = () => {
           </span>
         </Link>
 
-        <div className="grid grid-cols-2">
-          <Link to="/">Home</Link>
-          <Link to="/marketplace">Marketplace</Link>
+        <div className="flex items-center gap-6">
+          <Link to="/" className="text-sm font-medium hover:text-primary transition-colors">Home</Link>
+          <Link to="/marketplace" className="text-sm font-medium hover:text-primary transition-colors">Marketplace</Link>
+          {user && user.role !== 'admin' && (
+            <Link to="/ads" className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1">
+              Promote
+            </Link>
+          )}
         </div>
 
         {!user && (
           <div className="flex items-center gap-4">
             <Link to="/login">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="font-medium">
                 Login
               </Button>
             </Link>
 
             <Link to="/register">
-              <Button size="sm">
+              <Button size="sm" className="font-medium shadow-md">
                 Create Account
               </Button>
             </Link>
@@ -57,10 +62,16 @@ const Navbar: React.FC = () => {
         {user && (
           <div className="flex items-center gap-3">
             <NotificationBell />
-            <Button variant={"outline"} onClick={() => navigate("/seller-dashboard")} size="sm" className="cursor-pointer">
-              Dashboard
-            </Button>
-            <Button variant={"outline"} onClick={LogoutHandler} size="sm" className="cursor-pointer">
+            {user.role === 'admin' ? (
+                <Button variant={"default"} onClick={() => navigate("/admin")} size="sm" className="cursor-pointer bg-blue-600 hover:bg-blue-700 shadow-sm">
+                    Admin Panel
+                </Button>
+            ) : (
+                <Button variant={"outline"} onClick={() => navigate("/dashboard")} size="sm" className="cursor-pointer border-slate-200 hover:bg-slate-50">
+                    Dashboard
+                </Button>
+            )}
+            <Button variant={"ghost"} onClick={LogoutHandler} size="sm" className="cursor-pointer text-slate-500 hover:text-red-500 hover:bg-red-50">
               Log out
             </Button>
           </div>
