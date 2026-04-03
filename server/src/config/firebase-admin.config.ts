@@ -2,20 +2,20 @@ import admin from "firebase-admin";
 
 type Bucket = ReturnType<admin.storage.Storage["bucket"]>;
 
-let serviceAccount;
+// ✅ Get from ENV
+const rawConfig = process.env.FIREBASE_CONFIG;
 
-if (process.env.FIREBASE_CONFIG) {
-  // ✅ Production (Render)
-  serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
-
-  serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-} else {
-  // ✅ Local fallback (optional)
-  serviceAccount = await import("../config/reyuDiamondKey.json", {
-    assert: { type: "json" }
-  });
+if (!rawConfig) {
+  throw new Error("FIREBASE_CONFIG is not set in environment variables");
 }
 
+// ✅ Parse JSON
+const serviceAccount = JSON.parse(rawConfig);
+
+// ✅ Fix private key formatting
+serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
+
+// ✅ Initialize Firebase
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
@@ -23,8 +23,9 @@ if (!admin.apps.length) {
   });
 }
 
+// ✅ Exports
 export const db = admin.firestore();
-export const fcm = admin.messaging();
+export const fcm: admin.messaging.Messaging = admin.messaging();
 export const bucket: Bucket = admin.storage().bucket();
 
 export default admin;
