@@ -30,7 +30,7 @@ import {
     Check
 } from "lucide-react";
 import { toast } from "sonner";
-import { createInventorySchema } from "../../../../backend/server/src/validation/inventory.validation";
+import { createInventorySchema } from "@/validation/inventory.validation";
 
 // Extend with barcode (frontend-only field not in base schema)
 const inventoryFormSchema = createInventorySchema.extend({

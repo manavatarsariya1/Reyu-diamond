@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const inventoryStatusEnum = ["AVAILABLE", "NOT_AVAILABLE", "LISTED", "SOLD", "ON_MEMO", "LOCKED", "AUCTION_ENDED"] as const;
+const inventoryStatusEnum = ["AVAILABLE", "NOT_AVAILABLE", "LISTED", "SOLD", "ON_MEMO"] as const;
 const cutEnum = ["EXCELLENT", "VERY_GOOD", "GOOD", "FAIR", "POOR"] as const;
 const colorEnum = ["D", "E", "F", "G", "H", "I", "J", "K", "L", "M"] as const;
 const clarityEnum = ["FL", "IF", "VVS1", "VVS2", "VS1", "VS2", "SI1", "SI2", "I1"] as const;
