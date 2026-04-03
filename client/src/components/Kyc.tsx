@@ -8,6 +8,7 @@ import { submitKycRequested, fetchKycStatusRequested } from "@/features/kyc/kycS
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "@/app/store";
 import { CheckCircle2, Clock, XCircle, ShieldCheck, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 type KycFormData = z.infer<typeof kycSchema>;
 
@@ -45,9 +46,18 @@ const Kyc: React.FC = () => {
   // Re-fetch after successful submit
   useEffect(() => {
     if (submitStatus === "success" && userId) {
+      toast.success("KYC Submitted Successfully!");
       dispatch(fetchKycStatusRequested(userId));
     }
   }, [submitStatus, userId, dispatch]);
+
+  // Toast on Redux error
+  const submitError = useSelector((state: RootState) => state.kyc.submit.error);
+  useEffect(() => {
+    if (submitStatus === "error" && submitError) {
+      toast.error(submitError.message || "Submission failed. Please check your data.");
+    }
+  }, [submitStatus, submitError]);
 
   // Live polling every 30 seconds
   useEffect(() => {
@@ -77,6 +87,7 @@ const Kyc: React.FC = () => {
   };
 
   const onSubmit = (data: KycFormData) => {
+    console.log("RHF onSubmit triggered with data:", data);
     dispatch(submitKycRequested(data as any));
   };
 

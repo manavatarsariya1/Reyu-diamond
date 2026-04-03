@@ -35,59 +35,76 @@ export interface SubmitKycPayload {
 
 
 export const submitKyc = async (payload: SubmitKycPayload) => {
-
-  const form = new FormData();
-
-  form.append("firstName", String(payload.firstName));
-  form.append("middleName", String(payload.middleName || ""));
-  form.append("lastName", String(payload.lastName));
-  form.append("dob", String(payload.dob));
-  form.append("phone", String(payload.phone));
-
-  // address → nested JSON
-  form.append(
-    "address",
-    JSON.stringify({
-      residentialAddress: payload.residentialAddress,
-      city: payload.city,
-      state: payload.state,
-      pincode: payload.pincode,
-      country: payload.country || "IN",
-    })
-  );
-
-  // documents → nested JSON
-  form.append(
-    "documents",
-    JSON.stringify({
-      aadhaar: { aadhaarNumber: payload.aadhaarNumber },
-      pan: { panNumber: payload.panNumber },
-    })
-  );
-
-  // files (names must contain keywords)
-  form.append("aadhaarFile", payload.aadhaarImage[0]);
-  form.append("panFile", payload.panImage[0]);
-
-  let token = "";
   try {
-    const rawToken = localStorage.getItem("token");
-    if (rawToken) {
-      token = JSON.parse(rawToken);
+    console.log("Starting KYC combined submission payload:", payload);
+    const form = new FormData();
+
+    form.append("firstName", String(payload.firstName));
+    form.append("middleName", String(payload.middleName || ""));
+    form.append("lastName", String(payload.lastName));
+    form.append("dob", String(payload.dob));
+    form.append("phone", String(payload.phone));
+
+    // address → nested JSON
+    form.append(
+      "address",
+      JSON.stringify({
+        residentialAddress: payload.residentialAddress,
+        city: payload.city,
+        state: payload.state,
+        pincode: payload.pincode,
+        country: payload.country || "IN",
+      })
+    );
+
+    // documents → nested JSON
+    form.append(
+      "documents",
+      JSON.stringify({
+        aadhaar: { aadhaarNumber: payload.aadhaarNumber },
+        pan: { panNumber: payload.panNumber },
+      })
+    );
+
+    // Safe File Appending
+    if (payload.aadhaarImage && payload.aadhaarImage.length > 0) {
+      console.log("Appending Aadhaar file...");
+      form.append("aadhaarFile", payload.aadhaarImage[0]);
+    } else {
+      console.warn("Aadhaar image missing in payload despite validation");
     }
-  } catch (e) {
-    console.error("Error parsing token for KYC submission:", e);
+
+    if (payload.panImage && payload.panImage.length > 0) {
+      console.log("Appending PAN file...");
+      form.append("panFile", payload.panImage[0]);
+    } else {
+      console.warn("PAN image missing in payload despite validation");
+    }
+
+    let token = "";
+    try {
+      const rawToken = localStorage.getItem("token");
+      if (rawToken) {
+        token = JSON.parse(rawToken);
+      }
+    } catch (e) {
+      console.error("Error parsing token for KYC submission:", e);
+    }
+
+    console.log("Sending POST request to /kyc/submit...");
+    const res = await api.post("/kyc/submit", form, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log("KYC Submission Response:", res.data);
+    return res.data;
+  } catch (error: any) {
+    console.error("FATAL ERROR in submitKyc service:", error);
+    throw error; // Re-throw to be caught by Saga
   }
-
-  const res = await api.post("/kyc/submit", form, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-
-  return res.data;
 };
 
 export const fetchKycStatus = async (userId: string) => {

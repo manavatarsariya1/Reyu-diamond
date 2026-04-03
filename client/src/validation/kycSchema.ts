@@ -72,38 +72,38 @@ export const kycSchema = z.object({
     .transform((val) => val.toUpperCase()),
 
   aadhaarImage: z
-    .instanceof(FileList)
-    .refine((files) => files.length === 1, "Aadhaar image is required")
+    .any()
+    .refine((files) => files && files.length === 1, "Aadhaar image is required")
     .refine(
-      (files) => files[0]?.size <= 5000000,
+      (files) => !files || (files[0]?.size <= 5000000),
       "Image size must be less than 5MB"
     )
     .refine(
-      (files) => ["image/jpeg", "image/jpg", "image/png"].includes(files[0]?.type),
+      (files) => !files || ["image/jpeg", "image/jpg", "image/png"].includes(files[0]?.type),
       "Only JPG, JPEG, and PNG formats are allowed"
     ),
 
   panImage: z
-    .instanceof(FileList)
-    .refine((files) => files.length === 1, "PAN image is required")
+    .any()
+    .refine((files) => files && files.length === 1, "PAN image is required")
     .refine(
-      (files) => files[0]?.size <= 5000000,
+      (files) => !files || (files[0]?.size <= 5000000),
       "Image size must be less than 5MB"
     )
     .refine(
-      (files) => ["image/jpeg", "image/jpg", "image/png"].includes(files[0]?.type),
+      (files) => !files || ["image/jpeg", "image/jpg", "image/png"].includes(files[0]?.type),
       "Only JPG, JPEG, and PNG formats are allowed"
     ),
 
   selfie: z
-    .instanceof(FileList, { message: "Selfie is optional" })
+    .any()
     .optional()
     .refine(
       (files) => !files || files.length <= 1,
       "Only one selfie is allowed"
     )
     .refine(
-      (files) => !files || files[0]?.size <= 5000000,
+      (files) => !files || (files[0]?.size <= 5000000),
       "Selfie size must be less than 5MB"
     ),
 });
