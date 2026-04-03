@@ -33,6 +33,8 @@ import AdManagement from '@/components/admin/AdManagement';
 import SystemLogs from '@/components/admin/SystemLogs';
 import AdManagementPage from '@/pages/AdManagementPage';
 import PublicProfilePage from '@/pages/PublicProfilePage';
+import InquiryDetailsPage from '@/pages/InquiryDetailsPage';
+
 
 const AppRoutes = createBrowserRouter([
     {
@@ -86,6 +88,11 @@ const AppRoutes = createBrowserRouter([
         path: "/x",
         element: <StripeOnboardingBanner />
     },
+    {
+        path: "/inquiry/:id",
+        element: <InquiryDetailsPage />
+    },
+
     {
         element: <ProtectedRoute allowedRoles={['user', 'admin']} />,
         children: [

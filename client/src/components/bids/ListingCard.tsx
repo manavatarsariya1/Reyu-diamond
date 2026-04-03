@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Lock, Gavel, QrCode, Search, Sun, Eye, Star, Package } from "lucide-react";
+import { Lock, Gavel, QrCode, Search, Sun, Eye, Star, Package, Share2 } from "lucide-react";
+import ShareInventoryButton from "../inventory/ShareInventoryButton";
 import { ReputationBadge } from "../reputation/ReputationBadge";
 import type { DiamondListing } from "@/types/listing";
 import { ListingStatus } from "@/types/listing";
@@ -144,20 +145,36 @@ export function ListingCard({ listing, onPlaceBid, isOwner }: ListingCardProps) 
           </div>
         )}
 
-        {/* Seller Info top-right (only if not locked and not owner) */}
-        {!isLocked && !isOwner && listing.sellerRating && (
-          <div className="absolute top-4 right-4 flex items-center gap-1.5">
-             <div className="bg-white/90 backdrop-blur-sm px-2.5 py-1.5 rounded-xl shadow-sm border border-white/50 flex items-center gap-1.5">
-                <Star size={10} className="fill-amber-400 text-amber-400" />
-                <span className="text-[10px] font-bold text-gray-900">{listing.sellerRating.average.toFixed(1)}</span>
-             </div>
-             {listing.sellerBadges && listing.sellerBadges.length > 0 && (
-                <div className="bg-white/90 backdrop-blur-sm px-1 rounded-full shadow-sm border border-white/50">
-                    <ReputationBadge tier={listing.sellerBadges[0] as any} size="sm" showLabel={false} />
+        {/* Seller Info & Actions top-right (only if not locked and not owner) */}
+        <div className="absolute top-4 right-4 flex flex-col items-end gap-2 z-20">
+          {!isLocked && !isOwner && (
+            <>
+              {listing.sellerRating && (
+                <div className="bg-white/90 backdrop-blur-sm px-2.5 py-1.5 rounded-xl shadow-sm border border-white/50 flex items-center gap-1.5">
+                  <Star size={10} className="fill-amber-400 text-amber-400" />
+                  <span className="text-[10px] font-bold text-gray-900">{listing.sellerRating.average.toFixed(1)}</span>
                 </div>
-             )}
-          </div>
-        )}
+              )}
+              {listing.sellerBadges && listing.sellerBadges.length > 0 && (
+                <div className="bg-white/90 backdrop-blur-sm px-1 rounded-full shadow-sm border border-white/50">
+                  <ReputationBadge tier={listing.sellerBadges[0] as any} size="sm" showLabel={false} />
+                </div>
+              )}
+            </>
+          )}
+          
+          {/* Share Button moved here for visibility */}
+          {listing.id && (
+            <div className="group/share hover:scale-110 transition-all duration-300">
+               <ShareInventoryButton 
+                  inventoryId={listing.id} 
+                  title={`${listing.carat}ct ${listing.shape}`}
+                  className="!w-20 !h-10 !p-0 !rounded-full !bg-white/90 !backdrop-blur border-none shadow-[0_4px_12px_rgba(0,0,0,0.1)] text-gray-700 hover:!bg-white hover:text-indigo-600 flex items-center justify-center"
+               />
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* ── Body ─────────────────────────────────────────── */}

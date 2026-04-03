@@ -1,27 +1,27 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { analyticsService } from '@/api/analyticsService';
-import { adService } from "@/api/adService";
-import type { Advertisement } from "@/api/adService";
 import {
   Gavel,
   Handshake,
   Package,
-  Clock,
   CheckCircle2,
   AlertCircle,
-  TrendingUp,
   History,
-  ChevronLeft,
-  ChevronRight,
   Sparkles,
   BarChart3,
-  Edit3
 } from 'lucide-react';
+
 import { format } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import AdCarousel from '@/components/ads/AdCarousel';
+
+import { requirementService, type Requirement } from '@/api/requirementService';
+import ShareInquiryButton from '@/components/inquiry/ShareInquiryButton';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Skeleton } from '../ui/skeleton';
+
 
 interface DashboardData {
     stats: {
@@ -38,24 +38,32 @@ interface DashboardData {
 
 const UserDashboard = () => {
     const [data, setData] = useState<DashboardData | null>(null);
+    const [inquiries, setInquiries] = useState<Requirement[]>([]);
     const [loading, setLoading] = useState(true);
 
+
     useEffect(() => {
-        const fetchStats = async () => {
+        const fetchDashboardData = async () => {
             try {
-                const response = await analyticsService.getUserDashboardStats();
-                if (response.success) {
-                    setData(response.data);
+                const [statsRes, inquiriesRes] = await Promise.all([
+                    analyticsService.getUserDashboardStats(),
+                    requirementService.getMyRequirements()
+                ]);
+
+                if (statsRes.success) {
+                    setData(statsRes.data);
                 }
+                setInquiries(inquiriesRes || []);
             } catch (error) {
-                console.error("Failed to fetch dashboard stats:", error);
+                console.error("Failed to fetch dashboard data:", error);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchStats();
+        fetchDashboardData();
     }, []);
+
 
     if (loading) {
         return <DashboardSkeleton />;
@@ -114,7 +122,87 @@ const UserDashboard = () => {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
+                {/* My Inquiries (Requirements) Section */}
+                <Card className="md:col-span-2 border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden bg-white/50 backdrop-blur-sm">
+                    <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between py-4">
+                        <CardTitle className="text-lg font-semibold flex items-center">
+                            <Sparkles className="w-5 h-5 mr-2 text-indigo-500" />
+                            My Diamond Inquiries
+                        </CardTitle>
+                        <Button size="sm" variant="outline" className="rounded-xl border-indigo-100 text-indigo-600 hover:bg-indigo-50" asChild>
+                            <Link to="/inquiry/create" className="flex items-center gap-1.5">
+                                <Plus className="w-4 h-4" /> New Inquiry
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {inquiries.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-slate-800 group">
+                                {inquiries.map((req) => (
+                                    <div key={req._id} className="p-6 hover:bg-indigo-50/30 transition-all duration-300 relative group/item">
+                                        <div className="flex flex-col h-full">
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div className="space-y-1">
+                                                    <p className="font-bold text-slate-900 dark:text-slate-100 text-lg tracking-tight">
+                                                        {req.carat}ct {req.shape}
+                                                    </p>
+                                                    <div className="flex gap-2">
+                                                        <Badge variant="secondary" className="text-[10px] bg-slate-100 text-slate-500 uppercase tracking-wider font-bold h-5">
+                                                            {req.color}
+                                                        </Badge>
+                                                        <Badge variant="secondary" className="text-[10px] bg-slate-100 text-slate-500 uppercase tracking-wider font-bold h-5">
+                                                            {req.clarity}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-indigo-100 text-indigo-700 p-2 rounded-xl">
+                                                    <Package className="w-5 h-5" />
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="mt-auto space-y-4">
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-slate-400 font-medium flex items-center gap-1">
+                                                        <BarChart3 className="w-4 h-4" /> Budget
+                                                    </span>
+                                                    <span className="font-bold text-slate-900 dark:text-slate-100">
+                                                        ${req.budget.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="flex items-center gap-2 pt-2">
+                                                    <Button variant="ghost" size="sm" className="flex-1 rounded-xl text-slate-500 font-bold hover:bg-slate-100" asChild>
+                                                        <Link to={`/inquiry/${req._id}`}>View Details</Link>
+                                                    </Button>
+                                                    <ShareInquiryButton 
+                                                        inquiryId={req._id} 
+                                                        carat={req.carat} 
+                                                        shape={req.shape} 
+                                                        className="flex-1"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="p-12 text-center">
+                                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-dashed border-slate-200">
+                                    <Sparkles className="w-8 h-8 text-slate-300" />
+                                </div>
+                                <h3 className="text-slate-900 font-bold mb-1">No Inquiries Yet</h3>
+                                <p className="text-slate-500 text-sm mb-6 max-w-[250px] mx-auto">Found a specific diamond you need? Post an inquiry and get offers from verified sellers.</p>
+                                <Button className="bg-indigo-600 hover:bg-indigo-700 rounded-xl" asChild>
+                                    <Link to="/inquiry/create">Create My First Inquiry</Link>
+                                </Button>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
                 {/* Recent Bids */}
+
                 <Card className="border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                     <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
                         <div className="flex items-center justify-between">

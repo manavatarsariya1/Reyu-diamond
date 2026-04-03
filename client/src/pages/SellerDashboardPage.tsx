@@ -13,7 +13,8 @@ import { SellerBidPanel } from "@/components/bids/SellerBidPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Store, Plus, Loader2, Package, Clock } from "lucide-react";
+import { Store, Plus, Loader2, Package, Clock, Share2 } from "lucide-react";
+import ShareInventoryButton from "@/components/inventory/ShareInventoryButton";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 
@@ -258,7 +259,13 @@ export default function SellerDashboardPage() {
                                                         <span className="font-semibold text-gray-900">{listing.clarity} / {listing.color}</span>
                                                     </div>
                                                 </div>
+                                                <ShareInventoryButton 
+                                                    inventoryId={listing.id} 
+                                                    title={`${listing.carat}ct ${listing.shape}`}
+                                                    className="w-full mt-4 h-12"
+                                                />
                                             </div>
+
 
                                             {/* Bids Panel */}
                                             <div className="lg:w-2/3">
@@ -310,7 +317,13 @@ export default function SellerDashboardPage() {
                                                     >
                                                         Details
                                                     </Link>
+                                                    <ShareInventoryButton 
+                                                        inventoryId={item._id} 
+                                                        title={`${item.carat}ct ${item.shape}`}
+                                                        className="h-8 px-2 py-0 min-w-0 border-none bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-slate-100"
+                                                    />
                                                 </div>
+
                                             </div>
                                         </div>
                                     ))}
