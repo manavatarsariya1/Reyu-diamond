@@ -11,6 +11,7 @@ export interface IRequirement extends Document {
   budget: number;
   createdAt: Date;
   updatedAt: Date;
+  cut?: string;
 }
 
 const requirementSchema = new mongoose.Schema<IRequirement>(
