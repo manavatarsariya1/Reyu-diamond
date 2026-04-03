@@ -20,6 +20,10 @@ const inventorySlice = createSlice({
     name: "inventory",
     initialState,
     reducers: {
+        clearInventoryError: (state) => {
+            state.error = null;
+        },
+
         // Fetch Inventories
         fetchInventoriesStart: (state) => {
             state.loading = true;
@@ -49,7 +53,7 @@ const inventorySlice = createSlice({
         },
 
         // Update Inventory
-        updateInventoryStart: (state, _action: PayloadAction<{ id: string; payload: Partial<SubmitInventoryPayload> }>) => {
+        updateInventoryStart: (state, _action: PayloadAction<{ id: string; formData: FormData }>) => {
             state.loading = true;
             state.error = null;
         },
@@ -100,6 +104,7 @@ export const {
     deleteInventorySuccess,
     deleteInventoryFailure,
     setCurrentInventory,
+    clearInventoryError,
 } = inventorySlice.actions;
 
 export default inventorySlice.reducer;

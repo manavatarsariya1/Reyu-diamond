@@ -130,7 +130,7 @@ const ShareInventoryButton: React.FC<ShareInventoryButtonProps> = ({
                         </button>
                     ))}
                     
-                    {navigator.share && (
+                    {typeof navigator.share !== "undefined" && (
                         <button
                             onClick={() => handleSocialShare("native")}
                             className="col-span-2 flex items-center justify-center gap-3 p-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition-all duration-200"

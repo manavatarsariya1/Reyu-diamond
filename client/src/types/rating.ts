@@ -12,6 +12,8 @@ export type Rating = {
     id: string;
     dealId: string;
     raterId: string;
+    raterName?: string;
+    raterAvatar?: string;
     ratedUserId: string;
     score: number; // 1-5
     comment?: string;

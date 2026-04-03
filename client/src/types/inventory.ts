@@ -34,6 +34,7 @@ export type InventoryItem = {
     locked: boolean;
     images: string[];
     video?: string;
+    videos?: string[];
 
     activeDealId?: string;
 

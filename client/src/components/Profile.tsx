@@ -12,6 +12,10 @@ const Profile: React.FC = () => {
 //     photo: "https://i.pravatar.cc/150" // temporary profile image
 //   };
 
+  if (!user) {
+    return <div className="p-10 text-center">Loading profile...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
       <div className="bg-white shadow-lg rounded-2xl w-full max-w-md p-6">
@@ -19,13 +23,12 @@ const Profile: React.FC = () => {
         {/* Profile Header */}
         <div className="flex flex-col items-center">
           <img
-            // src={user.photo}
             src={"https://i.pravatar.cc/150"}
             alt="Profile"
             className="w-28 h-28 rounded-full border-4 border-blue-500 shadow-md"
           />
-          <h2 className="mt-4 text-xl font-semibold">{user.name}</h2>
-          <p className="text-gray-500 text-sm">User Profile</p>
+          <h2 className="mt-4 text-xl font-semibold">{user.name || user.username}</h2>
+          <p className="text-gray-500 text-sm">{user.role?.toUpperCase()} Profile</p>
         </div>
 
         {/* Info Section */}
@@ -37,7 +40,7 @@ const Profile: React.FC = () => {
 
           <div className="bg-gray-50 p-4 rounded-lg">
             <p className="text-gray-500 text-sm">User ID</p>
-            <p className="font-medium">{user.id}</p>
+            <p className="font-medium">{user.id || user._id}</p>
           </div>
         </div>
 

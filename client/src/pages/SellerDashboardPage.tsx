@@ -47,7 +47,7 @@ export default function SellerDashboardPage() {
     const [allBids, setAllBids] = useState<Record<string, Bid[]>>({});
     const [isLoading, setIsLoading] = useState(true);
 
-    const userId = user?.id || (user as Record<string, unknown>)?._id as string;
+    const userId = user?.id || user?._id || "";
 
     const fetchDashboardData = async () => {
         if (!userId) {
@@ -88,11 +88,11 @@ export default function SellerDashboardPage() {
                     id: auction._id,
                     sellerId: inv.sellerId,
                     sellerName: "You",
-                    shape: inv.shape,
+                    shape: inv.shape as any,
                     carat: inv.carat,
-                    color: inv.color,
-                    clarity: inv.clarity,
-                    certification: inv.lab,
+                    color: inv.color as any,
+                    clarity: inv.clarity as any,
+                    certification: inv.lab as any,
                     reportNumber: inv.barcode,
                     price: auction.highestBidPrice > 0 ? auction.highestBidPrice : auction.basePrice,
                     imageUrl: inv.images?.[0] || "",
