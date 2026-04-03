@@ -1,0 +1,113 @@
+import { configureStore, combineReducers } from "@reduxjs/toolkit";
+import createSagaMiddleware from "redux-saga";
+import authReducer from "../features/auth/auth.Slice"
+import kycReducer from "../features/kyc/kycSlice";
+import inventoryReducer from "../features/inventory/inventorySlice";
+import auctionReducer from "../features/auction/auctionSlice";
+import bidReducer from "../features/bid/bidSlice";
+import dealReducer from "../features/deal/dealSlice";
+import paymentReducer from "../features/payment/paymentSlice";
+import chatReducer from "../features/chat/chatSlice";
+import notificationReducer from "../features/notification/notificationSlice";
+import adminReducer from "../features/admin/adminSlice";
+
+
+import storage from "redux-persist/lib/storage";
+import type { PersistConfig } from 'redux-persist';
+
+import {
+   persistStore,
+   persistReducer,
+   FLUSH,
+   REHYDRATE,
+   PAUSE,
+   PERSIST,
+   PURGE,
+   REGISTER,
+   //   PersistConfig,
+} from "redux-persist";
+
+import rootSaga from "./rootSaga";
+
+/* ===============================
+   1️⃣ Saga middleware
+   =============================== */
+const sagaMiddleware = createSagaMiddleware();
+
+/* ===============================
+   2️⃣ Root reducer
+   =============================== */
+const rootReducer = combineReducers({
+   auth: authReducer,
+   kyc: kycReducer,
+   inventory: inventoryReducer,
+   auction: auctionReducer,
+   bid: bidReducer,
+   deal: dealReducer,
+   payment: paymentReducer,
+   chat: chatReducer,
+   notification: notificationReducer,
+   admin: adminReducer,
+   //   products: productReducer,
+   //   wishlist: wishlistReducer,
+   //   refresh: refreshReducer,
+   //   sync: syncReducer,
+});
+
+/* ===============================
+   3️⃣ Persist config (typed)
+   =============================== */
+const persistConfig: PersistConfig<RootReducerType> = {
+   key: "root_v3",
+   storage,
+   whitelist: ["auth", "kyc", "inventory", "auction", "bid", "deal", "payment", "chat", "notification", "admin"],
+};
+
+/* ===============================
+   4️⃣ Persisted reducer
+   =============================== */
+const persistedReducer = persistReducer(persistConfig, rootReducer);
+// const persistedReducer = persistReducer<any>(persistConfig, rootReducer);
+
+
+/* ===============================
+   5️⃣ Store
+   =============================== */
+export const store = configureStore({
+   reducer: persistedReducer,
+   middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({
+         thunk: false, // ❗ disable thunk when using saga
+         serializableCheck: {
+            ignoredActions: [
+               FLUSH,
+               REHYDRATE,
+               PAUSE,
+               PERSIST,
+               PURGE,
+               REGISTER,
+            ],
+         },
+      }).concat(sagaMiddleware),
+});
+
+/* ===============================
+   6️⃣ Run saga
+   =============================== */
+sagaMiddleware.run(rootSaga);
+
+/* ===============================
+   7️⃣ Persistor
+   =============================== */
+export const persistor = persistStore(store);
+
+/* ===============================
+   8️⃣ Types (IMPORTANT)
+   =============================== */
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
+
+// Helper type
+type RootReducerType = ReturnType<typeof rootReducer>;
+
+export default store;
