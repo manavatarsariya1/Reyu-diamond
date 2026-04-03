@@ -251,4 +251,4 @@ ${videoUrl ? `
 
 // After restarting your server, send the link with `?v=4` at the end in a **new WhatsApp message** to bypass cache:
 // ```
-https://your-ngrok.app/api/inventory/seo/69ce9059bfa38d75ace51e8b?v=4
+// https://your-ngrok.app/api/inventory/seo/69ce9059bfa38d75ace51e8b?v=4
