@@ -221,7 +221,10 @@ const Kyc: React.FC = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit, (err) => {
+            console.log("Validation Errors:", err);
+            toast.error("Please fill in all required fields and upload the necessary documents.");
+          })} className="space-y-6">
 
             {/* Personal Information */}
             <div className="border-b border-gray-200 pb-6">
@@ -301,7 +304,7 @@ const Kyc: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Upload Aadhaar Card <span className="text-red-500">*</span></label>
                     <input type="file" accept="image/jpeg,image/jpg,image/png" className="w-full border border-gray-300 rounded-lg p-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" {...register("aadhaarImage")} />
                     {renderPreview(aadhaarImage)}
-                    {errors.aadhaarImage && <p className="text-red-500 text-xs mt-1">{errors.aadhaarImage.message}</p>}
+                    {errors.aadhaarImage && <p className="text-red-500 text-xs mt-1">{errors.aadhaarImage.message as string}</p>}
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -314,7 +317,7 @@ const Kyc: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Upload PAN Card <span className="text-red-500">*</span></label>
                     <input type="file" accept="image/jpeg,image/jpg,image/png" className="w-full border border-gray-300 rounded-lg p-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" {...register("panImage")} />
                     {renderPreview(panImage)}
-                    {errors.panImage && <p className="text-red-500 text-xs mt-1">{errors.panImage.message}</p>}
+                    {errors.panImage && <p className="text-red-500 text-xs mt-1">{errors.panImage.message as string}</p>}
                   </div>
                 </div>
               </div>

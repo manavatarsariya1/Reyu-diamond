@@ -69,7 +69,16 @@ export const submitKyc = async (payload: SubmitKycPayload) => {
   form.append("aadhaarFile", payload.aadhaarImage[0]);
   form.append("panFile", payload.panImage[0]);
 
-  const token = JSON.parse(localStorage.getItem("token") || "")
+  let token = "";
+  try {
+    const rawToken = localStorage.getItem("token");
+    if (rawToken) {
+      token = JSON.parse(rawToken);
+    }
+  } catch (e) {
+    console.error("Error parsing token for KYC submission:", e);
+  }
+
   const res = await api.post("/kyc/submit", form, {
     headers: {
       "Content-Type": "multipart/form-data",
@@ -82,8 +91,17 @@ export const submitKyc = async (payload: SubmitKycPayload) => {
 };
 
 export const fetchKycStatus = async (userId: string) => {
-  const token = JSON.parse(localStorage.getItem("token") || "\"\"");
-  const res = await api.get(`/kyc/${userId}`, {  // ← don't destructure
+  let token = "";
+  try {
+    const rawToken = localStorage.getItem("token");
+    if (rawToken) {
+      token = JSON.parse(rawToken);
+    }
+  } catch (e) {
+    // Silence error, will result in unauthorized if truly missing
+  }
+
+  const res = await api.get(`/kyc/${userId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   console.log(res.data, "datatatata");

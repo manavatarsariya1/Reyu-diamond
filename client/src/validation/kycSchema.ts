@@ -96,10 +96,14 @@ export const kycSchema = z.object({
     ),
 
   selfie: z
-    .instanceof(FileList)
-    .refine((files) => files.length === 1, "Selfie is required")
+    .instanceof(FileList, { message: "Selfie is optional" })
+    .optional()
     .refine(
-      (files) => files[0]?.size <= 5000000,
-      "Image size must be less than 5MB"
+      (files) => !files || files.length <= 1,
+      "Only one selfie is allowed"
+    )
+    .refine(
+      (files) => !files || files[0]?.size <= 5000000,
+      "Selfie size must be less than 5MB"
     ),
 });
