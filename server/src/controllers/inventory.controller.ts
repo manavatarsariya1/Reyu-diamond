@@ -182,7 +182,7 @@ export const getInventorySEO = async (req: Request, res: Response, next: NextFun
 
     const title = `${inventory.carat}ct ${inventory.shape} Diamond - ${inventory.title}`;
     const description = `${inventory.cut} Cut, ${inventory.color} Color, ${inventory.clarity} Clarity. Certified by ${inventory.lab}. Price: $${inventory.price.toLocaleString()}`;
-    const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, "");
+    const clientUrl = (process.env.CLIENT_URL || 'https://reyu-diamond.vercel.app').replace(/\/$/, "");
     const redirectUrl = `${clientUrl}/marketplace/${id}`;
 
     const rawImage = inventory.images?.[0] || "";

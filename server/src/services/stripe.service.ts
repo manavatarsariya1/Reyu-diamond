@@ -77,7 +77,7 @@ export class StripeService {
             // Determine base URL from request or fallback to a default (e.g., localhost)
             // Ideally this should be in config, but for now we'll infer or use a placeholder
             // In production, this must be the actual frontend URL
-            const origin = req?.get("origin") || "http://localhost:5173";
+            const origin = req?.get("origin") || (process.env.CLIENT_URL || 'https://reyu-diamond.vercel.app').replace(/\/$/, "");
 
             const params = getAccountLinkParams(accountId, origin);
             const accountLink = await stripe.accountLinks.create(params);
