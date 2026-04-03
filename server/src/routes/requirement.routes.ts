@@ -7,6 +7,7 @@ import {
   updateRequirements,
   getRequirementById,
   deleteRequirement,
+  getInquirySEO,
 } from "../controllers/requirement.controller.js";
 import { kycVerifiedOnly } from "../middlewares/kyc.middleware.js";
 import { loadUserRole, ownerOrAdmin } from "../middlewares/permission.middleware.js";
@@ -18,7 +19,13 @@ import { validate } from "../middlewares/validation.middleware.js";
 import Requirement from "../models/requirement.model.js";
 import isAdmin from "../middlewares/admin.middleware.js";
 
+
 const router = Router();
+
+// Public routes for sharing and SEO previews
+router.get("/share/:id", getRequirementById); // Shared view API
+router.get("/seo/:id", getInquirySEO);      // SEO Preview route (for bots)
+
 router.use(protect, kycVerifiedOnly)
 router.post("/", validate(createRequirementSchema), createRequirement);
 router.put("/:id", loadUserRole, ownerOrAdmin(Requirement, "userId"), validate(updateRequirementSchema), updateRequirements);

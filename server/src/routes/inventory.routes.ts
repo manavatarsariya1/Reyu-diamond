@@ -6,6 +6,7 @@ import {
   updateInventory,
   deleteInventory,
   getInventoryById,
+  getInventorySEO,
 } from "../controllers/inventory.controller.js";
 import { kycVerifiedOnly } from "../middlewares/kyc.middleware.js";
 import { loadUserRole, ownerOrAdmin } from "../middlewares/permission.middleware.js";
@@ -28,6 +29,7 @@ router.post(
   createInventory
 );
 router.get("/", getAllInventories);
+router.get("/seo/:id", getInventorySEO);
 router.get("/:id", getInventoryById);
 router.put(
   "/:id",
