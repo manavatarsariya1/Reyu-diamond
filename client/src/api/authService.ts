@@ -5,12 +5,14 @@ export interface User {
   _id?: string;
   id: string;
   username: string;
+  name?: string;
   email: string;
   role: "admin" | "user" | "seller" | "buyer";
   isVerified: boolean;
   accountStatus: "ACTIVE" | "DEACTIVE";
   isKycVerified: boolean;
   stripeAccountId?: string;
+  createdAt?: string;
 }
 
 export interface LoginPayload {

@@ -72,7 +72,7 @@ export default function ProfilePage() {
 
                 if (Array.isArray(aucRes)) {
                    const myAuctions = aucRes.filter((a: any) => 
-                        (typeof a.recipient === 'object' ? a.recipient._id : a.recipient) === user.id
+                        (typeof a.recipient === 'object' ? a.recipient._id : a.recipient) === user?.id
                     );
                    setStats(prev => ({ ...prev, activeAuctions: myAuctions.length }));
                 }

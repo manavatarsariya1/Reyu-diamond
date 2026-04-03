@@ -1,7 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
-
-import type { User, LoginPayload } from "../../api/authService";
+import type { User, LoginPayload, RegisterPayload, VerifyOtpPayload, ResendOtpPayload } from "../../api/authService";
 
 type RequestStatus = "idle" | "loading" | "success" | "error";
 
@@ -63,7 +62,7 @@ const authSlice = createSlice({
     },
 
     // REGISTER
-    registerRequested(state) {
+    registerRequested(state, _action: PayloadAction<RegisterPayload>) {
       state.register.status = "loading";
       state.isProcessing = true;
       state.register.error = null;
@@ -81,7 +80,7 @@ const authSlice = createSlice({
     },
 
     // VERIFY OTP
-    verifyOtpRequested(state) {
+    verifyOtpRequested(state, _action: PayloadAction<VerifyOtpPayload>) {
       state.otp.status = "loading";
       state.isProcessing = true;
       state.otp.error = null;
@@ -100,7 +99,7 @@ const authSlice = createSlice({
     },
 
     // RESEND OTP
-    resendOtpRequested(state) {
+    resendOtpRequested(state, _action: PayloadAction<ResendOtpPayload>) {
       state.resendOtp.status = "loading";
       state.resendOtp.error = null;
       state.resendOtp.message = null;

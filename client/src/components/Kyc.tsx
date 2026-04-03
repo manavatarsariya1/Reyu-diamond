@@ -71,12 +71,13 @@ const Kyc: React.FC = () => {
         const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
         const dataTransfer = new DataTransfer();
         dataTransfer.items.add(file);
-        setValue("selfie", dataTransfer.files, { shouldValidate: true });
+        // Cast to any to bypass strict literal check during transition
+        setValue("selfie" as any, dataTransfer.files, { shouldValidate: true });
       });
   };
 
   const onSubmit = (data: KycFormData) => {
-    dispatch(submitKycRequested(data));
+    dispatch(submitKycRequested(data as any));
   };
 
   const aadhaarImage = watch("aadhaarImage");

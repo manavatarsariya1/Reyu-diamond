@@ -11,6 +11,7 @@ export interface Advertisement {
     status: "PENDING" | "APPROVED" | "REJECTED" | "DISABLED";
     advertiserId: any;
     inventoryId?: any;
+    rejectionReason?: string;
     createdAt: string;
 }
 

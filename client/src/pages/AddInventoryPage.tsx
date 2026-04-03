@@ -2,11 +2,18 @@ import { InventoryForm } from "@/components/inventory/InventoryForm";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/app/store";
 
 export default function AddInventoryPage() {
     const navigate = useNavigate();
     const { id } = useParams();
     const isEdit = !!id;
+    
+    // Get the current item from redux if we're editing
+    const currentItem = useSelector((state: RootState) => 
+        isEdit ? state.inventory.items.find(i => i._id === id) : null
+    );
 
     return (
         <div className="p-6 max-w-4xl mx-auto">
@@ -21,7 +28,10 @@ export default function AddInventoryPage() {
             </div>
 
             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                <InventoryForm isEdit={isEdit} itemId={id} />
+                <InventoryForm 
+                    currentItem={currentItem} 
+                    onSuccess={() => navigate("/inventory")} 
+                />
             </div>
         </div>
     );

@@ -18,11 +18,11 @@ export interface SubmitKycPayload {
   dob: string;
   phone: string;
 
-  address: string;
-  residentialAddress: string;
-  city: string;
-  state: string;
-  pincode: string;
+  address?: string; // Optional — generated dynamically during submission
+  residentialAddress?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
   country?: string;
 
   aadhaarNumber: string;
@@ -30,6 +30,7 @@ export interface SubmitKycPayload {
 
   aadhaarImage: FileList;
   panImage: FileList;
+  selfie: FileList;
 }
 
 
@@ -37,11 +38,11 @@ export const submitKyc = async (payload: SubmitKycPayload) => {
 
   const form = new FormData();
 
-  form.append("firstName", payload.firstName);
-  form.append("middleName", payload.middleName || "");
-  form.append("lastName", payload.lastName);
-  form.append("dob", payload.dob);
-  form.append("phone", payload.phone);
+  form.append("firstName", String(payload.firstName));
+  form.append("middleName", String(payload.middleName || ""));
+  form.append("lastName", String(payload.lastName));
+  form.append("dob", String(payload.dob));
+  form.append("phone", String(payload.phone));
 
   // address → nested JSON
   form.append(

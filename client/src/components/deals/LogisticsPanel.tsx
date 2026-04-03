@@ -72,7 +72,7 @@ export function LogisticsPanel({ payment, shipping }: LogisticsPanelProps) {
                                     variant="ghost"
                                     size="sm"
                                     className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
-                                    onClick={() => copyToClipboard(shipping?.trackingNumber, "Tracking Number")}
+                                    onClick={() => copyToClipboard(shipping?.trackingNumber || "", "Tracking Number")}
                                 >
                                     <Copy className="w-3 h-3" />
                                 </Button>

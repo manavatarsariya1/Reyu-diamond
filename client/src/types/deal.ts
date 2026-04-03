@@ -1,5 +1,5 @@
 import type { Bid } from "./bid";
-import type { User } from "./auth";
+import type { User } from "../api/authService";
 
 export type DealStatus =
     | "CREATED"

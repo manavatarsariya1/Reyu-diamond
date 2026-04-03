@@ -95,11 +95,11 @@ export const kycSchema = z.object({
       "Only JPG, JPEG, and PNG formats are allowed"
     ),
 
-  // selfie: z
-  //   .instanceof(FileList)
-  //   // .refine((files) => files.length === 1, "Selfie is required")
-  //   .refine(
-  //     (files) => files[0]?.size <= 5000000,
-  //     "Image size must be less than 5MB"
-  //   ),
+  selfie: z
+    .instanceof(FileList)
+    .refine((files) => files.length === 1, "Selfie is required")
+    .refine(
+      (files) => files[0]?.size <= 5000000,
+      "Image size must be less than 5MB"
+    ),
 });

@@ -53,7 +53,7 @@ export function AuctionForm({ isOpen, onOpenChange, inventoryItem }: AuctionForm
         formState: { errors },
         reset
     } = useForm<AuctionFormValues>({
-        resolver: zodResolver(auctionSchema),
+        resolver: zodResolver(auctionSchema) as any,
         defaultValues: {
             basePrice: inventoryItem?.price || 0,
             startDate: new Date().toISOString().slice(0, 16), // datetime-local format YYYY-MM-DDTHH:mm
